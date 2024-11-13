@@ -1,0 +1,9 @@
+data/*.rda
+data-raw/*.rda
+data-raw/*.rds
+.RData
+.Rbuildignore
+.Rhistory
+.Rproj.user
+CellMentor.Rproj
+data-raw
