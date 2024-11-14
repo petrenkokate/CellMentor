@@ -1,0 +1,101 @@
+Error in InstallData("pbmcsca") : could not find function "InstallData"
+Execution halted
+Loading required package: SeuratObject
+Loading required package: sp
+‘SeuratObject’ was built under R 4.3.0 but the current version is
+4.3.2; it is recomended that you reinstall ‘SeuratObject’ as the ABI
+for R may have changed
+
+Attaching package: ‘SeuratObject’
+
+The following objects are masked from ‘package:base’:
+
+    intersect, t
+
+── Installed datasets ──────────────────────────────── SeuratData v0.2.2.9001 ──
+✔ pbmc3k  3.1.4                         ✔ pbmcsca 3.0.0
+
+────────────────────────────────────── Key ─────────────────────────────────────
+✔ Dataset loaded successfully
+❯ Dataset built with a newer version of Seurat than installed
+❓ Unknown version of Seurat installed
+
+Warning: The following packages are already installed and will not be reinstalled: pbmcsca
+Validating object structure
+Updating object slots
+Ensuring keys are in the proper structure
+Warning: Assay RNA changing from Assay to Assay
+Ensuring keys are in the proper structure
+Ensuring feature names don't have underscores or pipes
+Updating slots in RNA
+Validating object structure for Assay ‘RNA’
+Object representation is consistent with the most current Seurat version
+Error in save(pbmcsca, "~/CellMentor/data-raw/pbmcsca_raw.rda") : 
+  object ‘~/CellMentor/data-raw/pbmcsca_raw.rda’ not found
+Execution halted
+Loading required package: SeuratObject
+Loading required package: sp
+‘SeuratObject’ was built under R 4.3.0 but the current version is
+4.3.2; it is recomended that you reinstall ‘SeuratObject’ as the ABI
+for R may have changed
+
+Attaching package: ‘SeuratObject’
+
+The following objects are masked from ‘package:base’:
+
+    intersect, t
+
+── Installed datasets ──────────────────────────────── SeuratData v0.2.2.9001 ──
+✔ pbmc3k  3.1.4                         ✔ pbmcsca 3.0.0
+
+────────────────────────────────────── Key ─────────────────────────────────────
+✔ Dataset loaded successfully
+❯ Dataset built with a newer version of Seurat than installed
+❓ Unknown version of Seurat installed
+
+Warning: The following packages are already installed and will not be reinstalled: pbmcsca
+Validating object structure
+Updating object slots
+Ensuring keys are in the proper structure
+Warning: Assay RNA changing from Assay to Assay
+Ensuring keys are in the proper structure
+Ensuring feature names don't have underscores or pipes
+Updating slots in RNA
+Validating object structure for Assay ‘RNA’
+Object representation is consistent with the most current Seurat version
+[1] "DONE!"
+Error: object 'pbmcsca.R' not found
+Execution halted
+Error: object 'pbmcsca.R' not found
+Execution halted
+Loading required package: SeuratObject
+Loading required package: sp
+‘SeuratObject’ was built under R 4.3.0 but the current version is
+4.3.2; it is recomended that you reinstall ‘SeuratObject’ as the ABI
+for R may have changed
+
+Attaching package: ‘SeuratObject’
+
+The following objects are masked from ‘package:base’:
+
+    intersect, t
+
+── Installed datasets ──────────────────────────────── SeuratData v0.2.2.9001 ──
+✔ pbmc3k  3.1.4                         ✔ pbmcsca 3.0.0
+
+────────────────────────────────────── Key ─────────────────────────────────────
+✔ Dataset loaded successfully
+❯ Dataset built with a newer version of Seurat than installed
+❓ Unknown version of Seurat installed
+
+Warning: The following packages are already installed and will not be reinstalled: pbmcsca
+Validating object structure
+Updating object slots
+Ensuring keys are in the proper structure
+Warning: Assay RNA changing from Assay to Assay
+Ensuring keys are in the proper structure
+Ensuring feature names don't have underscores or pipes
+Updating slots in RNA
+Validating object structure for Assay ‘RNA’
+Object representation is consistent with the most current Seurat version
+[1] "DONE!"
