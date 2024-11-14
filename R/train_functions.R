@@ -14,32 +14,36 @@ create_train_object <- function(ref_matrix,
   # Create base object
   object <- methods::new("traincsfnmf")
   
-  # Set matrices
-  object@count.matrices <- methods::new(
+  # Set matrices using new structure
+  object@matrices <- methods::new(
     "RefDataList",
     ref = as(ref_matrix, "Matrix"),
     data = as(data_matrix, "Matrix")
   )
   
   # Set reference annotations
-  names(ref_celltype) <- colnames(object@count.matrices@ref)
+  names(ref_celltype) <- colnames(object@matrices@ref)
   object@annotation <- data.frame(
     celltype = ref_celltype,
     row.names = names(ref_celltype),
     stringsAsFactors = FALSE
   )
   
-  # Encode cell types and reorder
-  object@annotation$celltype.code <- encode_celltypes(object@annotation$celltype)
-  object <- reorder_data(object, "celltype")
-  
   # Set test annotations
-  names(data_celltype) <- colnames(object@count.matrices@data)
-  object@test.annotation <- data.frame(
+  names(data_celltype) <- colnames(object@matrices@data)
+  object@test_annotation <- data.frame(
     celltype = data_celltype,
     row.names = names(data_celltype),
     stringsAsFactors = FALSE
   )
+  
+  # Initialize other slots
+  object@rank <- 0
+  object@H <- Matrix(0)
+  object@W <- Matrix(0)
+  object@constants <- methods::new("helpmat")
+  object@parameters <- list()
+  object@results <- list()
   
   object
 }
@@ -69,24 +73,21 @@ divide_reference_data <- function(object, seed = 1) {
   ), by = celltype][, cell_id]
   
   # Get data matrices
-  data_matrix <- object@count.matrices@ref
+  data_matrix <- object@matrices@ref  # Changed from count.matrices
   train_matrix <- data_matrix[, train_cells]
   
   # Handle zero genes using sparse matrix operations
   zero_genes <- which(Matrix::rowSums(train_matrix) == 0)
   if (length(zero_genes) > 0) {
-    # Get expressing cells for all zero genes at once
     expr_matrix <- data_matrix[zero_genes, , drop = FALSE]
-    nz <- Matrix::summary(expr_matrix)  # Get non-zero elements
+    nz <- Matrix::summary(expr_matrix)
     
-    # Group by row (gene) and sample
     new_cells <- tapply(
-      colnames(data_matrix)[nz$j],  # Cell names
-      factor(nz$i, levels = seq_len(length(zero_genes))),  # Gene indices
+      colnames(data_matrix)[nz$j],
+      factor(nz$i, levels = seq_len(length(zero_genes))),
       function(x) if(length(x) > 0) sample(x, 1)
     )
     
-    # Combine with original cells
     train_cells <- unique(c(train_cells, unlist(new_cells)))
   }
   

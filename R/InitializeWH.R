@@ -15,11 +15,12 @@
 initialize_wh <- function(object, method = "NNDSVD", seed = 1) {
   set.seed(seed)
   
-  data_matrix <- as(object@count.matrices@ref, "Matrix")
-  k <- object@rank@k
+  data_matrix <- as(object@matrices@ref, "Matrix")
+  k <- object@parameters$rank  # Changed from object@rank@k
   celltype <- object@annotation$celltype
-  celltype.code <- object@annotation$celltype.code
-  names(celltype) <- names(celltype.code) <- rownames(object@annotation)
+  
+  # Removed celltype.code as it's not in new structure
+  names(celltype) <- rownames(object@annotation)
   
   # Validate k
   max_possible_k <- min(nrow(data_matrix), ncol(data_matrix))
@@ -30,7 +31,7 @@ initialize_wh <- function(object, method = "NNDSVD", seed = 1) {
   
   switch(method,
          "uniform" = initialize_uniform(data_matrix, k),
-         "regulated" = initialize_regulated(data_matrix, k, celltype.code),
+         "regulated" = initialize_regulated(data_matrix, k, celltype),  # Changed from celltype.code
          "NNDSVD" = initialize_nndsvd(data_matrix, k),
          "skmeanGenes" = initialize_genes_cluster(data_matrix, k, celltype),
          "skmeanCells" = initialize_cells_cluster(data_matrix, k, celltype),

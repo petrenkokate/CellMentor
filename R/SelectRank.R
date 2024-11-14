@@ -18,7 +18,7 @@ NULL
 #' @param range Range for beta search (default: c(0,1))
 #' @param main_matrix Optional main matrix
 #' @param verbose Show progress messages
-#' @return ExtendedRank object
+#' @return List containing rank value and scaling parameters
 #' @export
 SelectRank <- function(train_matrix,
                        max_p_value = 0.01,
@@ -105,9 +105,8 @@ SelectRank <- function(train_matrix,
   
   report(sprintf("Final k after p-value filtering: %d", count_k))
   
-  methods::new(
-    Class = "ExtendedRank",
-    k = count_k,
+  list(
+    rank = count_k,
     alpha = alpha,
     beta = beta,
     scale_vectors = scales
@@ -354,7 +353,8 @@ process_groups <- function(data_matrix, genes_Q, cells_Q, connectivity) {
 #' @export
 SelectCellsForFindK <- function(object, gamma = 0.5, seed = 1) {
   set.seed(seed)
-  data_matrix <- object@count.matrices@ref
+  # Change from count.matrices to matrices
+  data_matrix <- object@matrices@ref
   
   # Calculate parameters
   num_cells <- ncol(data_matrix)

@@ -33,10 +33,12 @@ standard_beta <- function(object, const = 1) {
 #' @importFrom Matrix bdiag
 #' @keywords internal
 calculate_help_matrices <- function(object) {
-  # Get cell type counts
-  counts <- table(object@annotation$celltype.code)
-  num_clusters <- length(counts)
+  # Get cell type counts and info
   celltype <- object@annotation$celltype
+  counts <- table(celltype)
+  num_clusters <- length(counts)
+  k <- object@parameters$rank 
+  
   # Calculate matrices
   with_memory_check({
     # Calculate A matrix
@@ -50,8 +52,8 @@ calculate_help_matrices <- function(object) {
     rownames(P) <- unique(celltype)
     
     # Calculate M matrix
-    M <- as(matrix(1, ncol = object@rank@k, nrow = object@rank@k) - 
-              diag(x = 1, nrow = object@rank@k, ncol = object@rank@k), 
+    M <- as(matrix(1, ncol = k, nrow = k) - 
+              diag(x = 1, nrow = k, ncol = k), 
             "Matrix")
     
     # Calculate N matrix
@@ -197,9 +199,9 @@ calculate_bp_posneg <- function(B, P) {
 #' @return List of constants for H updates
 #' @keywords internal
 calculate_const_for_h <- function(object, beta = NULL) {
-  # Use provided beta or get from object
+  # Use provided beta or get from parameters
   if (is.null(beta)) {
-    beta <- object@hyper_para[["beta"]]
+    beta <- object@parameters$beta  # Changed from hyper_para
   }
   
   # Get components
@@ -214,7 +216,7 @@ calculate_const_for_h <- function(object, beta = NULL) {
   
   # Calculate constants
   num_clusters <- length(table(object@annotation$celltype))
-  sw_const <- object@hyper_para[["alpha"]] / num_clusters
+  sw_const <- object@parameters$alpha / num_clusters  # Changed from hyper_para
   sb_const <- 1/((num_clusters - 1) * num_clusters)
   
   A <- object@constants@A
@@ -249,7 +251,7 @@ calculate_accuracy <- function(train_object, h_project,
   
   # Get labels
   pred_labels <- singler_pred@listData[["labels"]]
-  true_labels <- train_object@test.annotation[singler_pred@rownames, "celltype"]
+  true_labels <- train_object@test_annotation[singler_pred@rownames, "celltype"]
   
   # Clean labels
   pred_clean <- gsub('[0-9]', '', pred_labels)
@@ -280,17 +282,17 @@ CSFnmfSingleR <- function(train_object, H_data = NULL, de.n = 50) {
   # Get reference projections
   H_ref <- as.data.frame(project_data(
     train_object@W,
-    train_object@count.matrices@ref
+    train_object@matrices@ref  # Changed from count.matrices
   ))
   
-  k <- train_object@rank@k
+  k <- train_object@parameters$rank  # Changed from rank@k
   rownames(H_ref) <- seq_len(k)
   
   # Get data projections if not provided
   if (is.null(H_data)) {
     H_data <- as.data.frame(project_data(
       train_object@W,
-      train_object@count.matrices@data
+      train_object@matrices@data  # Changed from count.matrices
     ))
   }
   

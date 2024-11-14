@@ -39,9 +39,10 @@ RunCSFNMF <- function(object,
                       seed = 1,
                       num_cores = 1,
                       chunk_size = NULL) {
-  
+
   # Set up reporting
   report <- create_reporter(verbose)
+  
   # Initialize training object
   report("Creating training object")
   train_object <- divide_reference_data(object, seed)
@@ -49,27 +50,39 @@ RunCSFNMF <- function(object,
   # Select or set rank
   report("Determining rank")
   if (is.null(k)) {
-    train_object@rank <- SelectRank(
-      train_matrix = train_object@count.matrices@data,
+    k <- SelectRank(
+      train_matrix = train_object@matrices@data,
       max_p_value = max_p_value,
-      main_matrix = train_object@count.matrices@ref
+      main_matrix = train_object@matrices@ref
     )
-    k <- train_object@rank@k
   } else {
-    train_object@rank@k <- k
     # Check k for skmeanGenes method
     if (init_method == "skmeanGenes") {
-      max_k <- floor(nrow(train_object@count.matrices@ref) / 2) - 1
+      max_k <- floor(nrow(train_object@matrices@ref) / 2) - 1
       if (k > max_k) {
         warning(sprintf("k reduced from %d to %d", k, max_k))
-        train_object@rank@k <- max_k
+        k <- max_k
       }
     }
   }
   
+  # Initialize parameters list
+  parameters <- list(
+    rank = k,
+    max_iter = max.iter,
+    init_method = init_method,
+    alpha = const.alpha,
+    beta = const.beta,
+    gamma = const.gamma,
+    delta = const.delta
+  )
+  train_object@parameters <- parameters
   
-  # Set iterations
-  train_object@max.iter <- max.iter
+  # Initialize results list
+  train_object@results <- list(
+    loss = numeric(0),
+    accuracy = NA
+  )
   
   # Initialize W and H if not provided
   if (is.null(W0_H0)) {
@@ -80,13 +93,12 @@ RunCSFNMF <- function(object,
   # Set matrices
   train_object@W <- W0_H0$W
   train_object@H <- W0_H0$H
-  train_object@init_method <- init_method
   
   # Set beta constraint
   if (is.null(const.beta)) {
-    const.beta <- standard_beta(train_object)
+    parameters$beta <- standard_beta(train_object)
   } else if (is.numeric(const.beta)) {
-    const.beta <- standard_beta(train_object, const.beta)
+    parameters$beta <- standard_beta(train_object, const.beta)
   }
   
   # Calculate helper matrices
@@ -99,39 +111,34 @@ RunCSFNMF <- function(object,
   real_N <- train_object@constants@N
   if (!is.numeric(const.alpha)) {
     train_object@constants@N <- const.alpha * train_object@constants@N
-    const.alpha <- 1
+    parameters$alpha <- 1
   }
   
   # Set parameters
-  train_object@hyper_para <- list(
-    alpha = const.alpha,
-    beta = const.beta,
-    gamma = const.gamma,
-    delta = const.delta
-  )
+  train_object@parameters <- parameters
   
   # Calculate constants for H
   report("Calculating H constants")
   train_object@constants@Hconst <- calculate_const_for_h(train_object)
-
+  
   # Update W and H
   report("Updating W and H matrices")
   train_object <- update_wh(train_object, theta, verbose)
   
   # Restore original parameters
-  train_object@hyper_para$alpha <- real_alpha
+  parameters$alpha <- real_alpha
   train_object@constants@N <- real_N
   
   # Determine chunk size if not provided
   if (is.null(chunk_size)) {
-    chunk_size <- determine_chunk_size(ncol(train_object@count.matrices@data))
+    chunk_size <- determine_chunk_size(ncol(train_object@matrices@data))
   }
   
   # Calculate projection with optimized function
   report("Calculating H projection")
   h_project <- project_data(
     W = train_object@W,
-    X = train_object@count.matrices@data,
+    X = train_object@matrices@data,
     seed = seed,
     num_cores = num_cores,
     chunk_size = chunk_size,
@@ -140,9 +147,10 @@ RunCSFNMF <- function(object,
   
   # Calculate accuracy
   report("Calculating accuracy")
-  train_object@accuracy <- calculate_accuracy(train_object, h_project)
+  accuracy <- calculate_accuracy(train_object, h_project)
+  train_object@results$accuracy <- accuracy
   if (verbose) {
-    message(sprintf("Final accuracy: %.4f", train_object@accuracy))
+    message(sprintf("Final accuracy: %.4f", accuracy))
   }
   
   # Update main object
@@ -151,15 +159,14 @@ RunCSFNMF <- function(object,
   object@H <- ensure_dgCMatrix(cbind(
     train_object@H,
     h_project
-  )[, colnames(object@count.matrices@ref)])
-  object@train_object <- train_object
+  )[, colnames(object@matrices@ref)])
   
   # Add processing info
   attr(object, "processing_info") <- list(
     num_cores_used = num_cores,
     chunk_size = chunk_size,
-    iterations = length(train_object@loss),
-    final_loss = tail(train_object@loss, 1),
+    iterations = length(train_object@results$loss),
+    final_loss = tail(train_object@results$loss, 1),
     projection_info = attr(h_project, "processing_info")
   )
   

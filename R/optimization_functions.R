@@ -6,11 +6,10 @@
 #' @importFrom Matrix norm
 #' @keywords internal
 calculate_loss <- function(object, divided = FALSE) {
-  # Get parameters
-  X <- object@count.matrices@ref
+  X <- object@matrices@ref
   W <- object@W
   H <- object@H
-  const.list <- object@hyper_para
+  const.list <- object@parameters
   num.clusters <- length(table(object@annotation$celltype))
   
   # Calculate components with memory optimization
@@ -65,13 +64,13 @@ update_w <- function(object) {
   
   # Calculate components in chunks to optimize memory
   up <- with_memory_check({
-    object@count.matrices@ref %*% t(object@H)
+    object@matrices@ref %*% t(object@H)
   })
   
   down <- with_memory_check({
     object@W %*% (
       object@H %*% t(object@H) + 
-        object@hyper_para[["delta"]] * object@constants@M
+        object@parameters[["delta"]] * object@constants@M
     )
   })
   
@@ -101,9 +100,9 @@ update_h <- function(object, num_cores = 1) {
     list(
       a = crossprod(object@W, object@W) %*% object@H + 
         object@H %*% object@constants@Hconst[["positive"]] + 
-        matrix(object@hyper_para[["gamma"]], nrow = nrow(object@H), 
+        matrix(object@parameters[["gamma"]], nrow = nrow(object@H), 
                ncol = ncol(object@H)),
-      b = crossprod(object@W, object@count.matrices@ref),
+      b = crossprod(object@W, object@matrices@ref),
       c = object@H %*% object@constants@Hconst[["negative"]]
     )
   })
@@ -145,7 +144,7 @@ update_wh <- function(object, theta, verbose = TRUE, num_cores = 1) {
   if (verbose) {
     pb <- progress::progress_bar$new(
       format = "Iteration :current/:total [:bar] :percent eta: :eta",
-      total = object@max.iter
+      total = object@parameters$max_iter
     )
   }
   
@@ -155,7 +154,7 @@ update_wh <- function(object, theta, verbose = TRUE, num_cores = 1) {
   iter <- 1
   stop_cond <- 1
   
-  while (stop_cond > theta && iter < object@max.iter && loss[iter] > 0) {
+  while (stop_cond > theta && iter < object@parameters$max_iter && loss[iter] > 0) {
     if (verbose) pb$tick()
     
     # Update matrices with memory optimization
@@ -178,6 +177,7 @@ update_wh <- function(object, theta, verbose = TRUE, num_cores = 1) {
     if (iter %% 5 == 0) gc()
   }
   
-  object@loss <- loss
+  # Store loss in results list instead of directly in object
+  object@results$loss <- loss
   object
 }

@@ -80,11 +80,16 @@ SubClusCSFNMF <- function(object,
     ref_subclusters[rownames(object@train_object@annotation)]
   
   # Reorder and update object
+  report("Reordering data")
   object@train_object <- reorder_data(object@train_object, "celltype")
-  object@train_object@annotation["celltype.code"] <- 
+  
+  # Update annotations and matrices
+  object@train_object@annotation$celltype.code <- 
     encode_celltypes(object@train_object@annotation$celltype)
   object@train_object@H <- 
     object@train_object@H[, rownames(object@train_object@annotation)]
+  
+  # Recalculate helper matrices
   object@train_object <- calculate_help_matrices(object@train_object)
   
   # Predict sub-clusters for validation data
@@ -94,11 +99,11 @@ SubClusCSFNMF <- function(object,
     verbose = verbose
   )
   
-  # Update validation annotations
-  object@train_object@test.annotation["original_celltype"] <- 
-    object@train_object@test.annotation$celltype
-  object@train_object@test.annotation$celltype <- 
-    valid_subclusters[rownames(object@train_object@test.annotation)]
+  # Update validation annotations using new test_annotation name
+  object@train_object@test_annotation["original_celltype"] <- 
+    object@train_object@test_annotation$celltype
+  object@train_object@test_annotation$celltype <- 
+    valid_subclusters[rownames(object@train_object@test_annotation)]
   
   # Store all sub-clusters
   object@annotation["subclusters"] <- 
@@ -116,14 +121,14 @@ SubClusCSFNMF <- function(object,
 #' @param min_cells Minimum cells per cluster
 #' @param verbose Show progress
 #' @return Vector of sub-cluster assignments
-#' @importFrom Seurat CreateSeuratObject FindVariableFeatures FindNeighbors FindClusters
+#' @importFrom Seurat CreateSeuratObject CreateAssayObject FindVariableFeatures FindNeighbors FindClusters
 #' @keywords internal
 find_subclusters <- function(train_object,
                              resolution,
                              algorithm,
                              min_cells,
                              verbose = TRUE) {
-  # Get cell types
+  # Get cell types from annotation
   celltype <- train_object@annotation$celltype
   names(celltype) <- rownames(train_object@annotation)
   new_celltype <- celltype
@@ -176,15 +181,16 @@ find_subclusters <- function(train_object,
 #' @importFrom SingleR SingleR
 #' @keywords internal
 predict_subclusters <- function(object, verbose = TRUE) {
-  # Initialize
-  celltype <- object@train_object@test.annotation$celltype
-  names(celltype) <- rownames(object@train_object@test.annotation)
+  # Initialize using new test_annotation name
+  celltype <- object@train_object@test_annotation$celltype
+  names(celltype) <- rownames(object@train_object@test_annotation)
   new_subcluster <- celltype
   
   # Get reference data
   ref_subcluster <- object@train_object@annotation$celltype
   names(ref_subcluster) <- rownames(object@train_object@annotation)
   
+  # Use matrices from new structure
   h_ref <- object@H
   h_project <- object@H[, names(new_subcluster)]
   

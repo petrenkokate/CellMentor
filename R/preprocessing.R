@@ -66,7 +66,7 @@ find_common_genes <- function(ref_matrix, data_matrix) {
 #' @keywords internal
 select_variable_genes <- function(object, gene_list = NULL, num_cores = 1) {
   # Get reference data and annotations
-  ref_matrix <- object@count.matrices@ref
+  ref_matrix <- object@matrices@ref
   annotations <- object@annotation$celltype
   
   # Run SingleR (parallel if multiple cores)
@@ -93,7 +93,7 @@ select_variable_genes <- function(object, gene_list = NULL, num_cores = 1) {
   # Subset matrices
   list(
     ref = ref_matrix[variable_genes, , drop = FALSE],
-    data = object@count.matrices@data[variable_genes, , drop = FALSE]
+    data = object@matrices@data[variable_genes, , drop = FALSE]
   )
 }
 
@@ -130,9 +130,8 @@ reorder_data <- function(object, reorder_by) {
   # Get order
   new_order <- order(object@annotation[[reorder_by]])
   
-  # Reorder both annotation and matrix columns
   object@annotation <- object@annotation[new_order, , drop = FALSE]
-  object@count.matrices@ref <- object@count.matrices@ref[, new_order, drop = FALSE]
+  object@matrices@ref <- object@matrices@ref[, new_order, drop = FALSE]
   
   object
 }

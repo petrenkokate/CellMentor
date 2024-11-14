@@ -215,9 +215,16 @@ validate_inputs <- function(ref_matrix, ref_celltype, data_matrix, params) {
 #' @keywords internal
 to_sparse <- function(matrix, verbose = FALSE) {
   tryCatch({
-    as(matrix, "CsparseMatrix")
+    if (inherits(matrix, "Matrix")) {
+      as(matrix, "CsparseMatrix")
+    } else {
+      as(as.matrix(matrix), "CsparseMatrix")
+    }
   }, error = function(e) {
-    if (verbose) warning("Converting to dense matrix first")
+    if (verbose) {
+      warning("Matrix conversion failed: ", e$message)
+    }
+    # Try alternative conversion
     as(as.matrix(matrix), "CsparseMatrix")
   })
 }

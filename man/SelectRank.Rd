@@ -30,7 +30,7 @@ SelectRank(
 \item{verbose}{Show progress messages}
 }
 \value{
-ExtendedRank object
+List containing rank value and scaling parameters
 }
 \description{
 Select Optimal Rank

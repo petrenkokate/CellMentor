@@ -19,7 +19,7 @@
 #' @return A CSFNMF object containing processed data and annotations
 #' 
 #' @importFrom methods new
-#' @importFrom Matrix rowSums colSums
+#' @importFrom Matrix rowSums colSums Matrix
 #' @importFrom SingleR trainSingleR
 #' @importFrom Seurat LogNormalize
 #' 
@@ -51,11 +51,9 @@ CreateCSFNMFobject <- function(ref_matrix,
                                verbose = TRUE,
                                num_cores = 1) {
   
-  # Initialize progress reporting
   report <- create_reporter(verbose)
   report("Starting CSFNMF object creation")
   
-  # Monitor memory usage
   with_memory_check({
     # Validate inputs
     report("Validating inputs")
@@ -67,148 +65,120 @@ CreateCSFNMFobject <- function(ref_matrix,
     
     # Create initial object
     report("Creating CSFNMF object")
-    object <- tryCatch({
-      methods::new("csfnmf")
-    }, error = function(e) {
-      stop("Failed to create CSFNMF object: ", e$message)
-    })
+    object <- methods::new("csfnmf")
     
     # Convert matrices to sparse format
     report("Converting matrices to sparse format")
-    object@count.matrices <- object@origin.matrices <- tryCatch({
-      methods::new(
-        "RefDataList",
-        ref = to_sparse(ref_matrix),
-        data = to_sparse(data_matrix)
-      )
-    }, error = function(e) {
-      stop("Failed to convert matrices to sparse format: ", e$message)
-    })
+    initial_matrices <- methods::new(
+      "RefDataList",
+      ref = to_sparse(ref_matrix),
+      data = to_sparse(data_matrix)
+    )
+    
+    # Set matrices
+    object@matrices <- initial_matrices
     
     # Set up annotation
     report("Setting up annotations")
-    tryCatch({
-      names(ref_celltype) <- colnames(object@count.matrices@ref)
-      object@annotation <- data.frame(
-        celltype = ref_celltype,
-        row.names = names(ref_celltype),
-        stringsAsFactors = FALSE
-      )
-    }, error = function(e) {
-      stop("Failed to set up annotations: ", e$message)
-    })
+    names(ref_celltype) <- colnames(initial_matrices@ref)
+    object@annotation <- data.frame(
+      celltype = ref_celltype,
+      row.names = names(ref_celltype),
+      stringsAsFactors = FALSE
+    )
     
     # Clean matrices
     report("Cleaning matrices")
-    tryCatch({
-      # Clean reference matrix
-      ref_cleaned <- clean_matrix_rows(object@count.matrices@ref)
-      data_cleaned <- clean_matrix_rows(object@count.matrices@data)
-      
-      if (length(ref_cleaned$removed_rows) > 0) {
-        report(sprintf("Removed %d empty rows from reference matrix", 
-                       length(ref_cleaned$removed_rows)))
-      }
-      if (length(data_cleaned$removed_rows) > 0) {
-        report(sprintf("Removed %d empty rows from query matrix", 
-                       length(data_cleaned$removed_rows)))
-      }
-      
-      object@count.matrices@ref <- ref_cleaned$matrix
-      object@count.matrices@data <- data_cleaned$matrix
-      
-    }, error = function(e) {
-      stop("Failed to clean matrices: ", e$message)
-    })
+    ref_cleaned <- clean_matrix_rows(object@matrices@ref)
+    data_cleaned <- clean_matrix_rows(object@matrices@data)
+    
+    if (length(ref_cleaned$removed_rows) > 0) {
+      report(sprintf("Removed %d empty rows from reference matrix", 
+                     length(ref_cleaned$removed_rows)))
+    }
+    if (length(data_cleaned$removed_rows) > 0) {
+      report(sprintf("Removed %d empty rows from query matrix", 
+                     length(data_cleaned$removed_rows)))
+    }
+    
+    object@matrices@ref <- ref_cleaned$matrix
+    object@matrices@data <- data_cleaned$matrix
     
     # Find common genes
     report("Finding common genes")
-    tryCatch({
-      common_genes <- find_common_genes(
-        object@count.matrices@ref,
-        object@count.matrices@data
-      )
-      
-      report(sprintf("Found %d common genes", length(common_genes$genes)))
-      
-      object@count.matrices@ref <- object@count.matrices@ref[common_genes$genes, ]
-      object@count.matrices@data <- object@count.matrices@data[common_genes$genes, ]
-      
-    }, error = function(e) {
-      stop("Failed to find common genes: ", e$message)
-    })
+    common_genes <- find_common_genes(
+      object@matrices@ref,
+      object@matrices@data
+    )
+    
+    report(sprintf("Found %d common genes", length(common_genes$genes)))
+    object@matrices@ref <- object@matrices@ref[common_genes$genes, ]
+    object@matrices@data <- object@matrices@data[common_genes$genes, ]
     
     # Normalize if requested
     if (norm) {
       report("Normalizing data")
-      tryCatch({
-        norm_matrices <- list(
-          ref = normalize_matrix(object@count.matrices@ref),
-          data = normalize_matrix(object@count.matrices@data)
-        )
-        
-        object@count.matrices <- object@norm.matrices <- methods::new(
-          "RefDataList",
-          ref = norm_matrices$ref,
-          data = norm_matrices$data
-        )
-        
-      }, error = function(e) {
-        stop("Failed to normalize data: ", e$message)
-      })
+      norm_matrices <- list(
+        ref = normalize_matrix(object@matrices@ref),
+        data = normalize_matrix(object@matrices@data)
+      )
+      
+      object@matrices <- methods::new(
+        "RefDataList",
+        ref = norm_matrices$ref,
+        data = norm_matrices$data
+      )
     }
     
     # Select variable genes if requested
     if (most.variable) {
       report("Selecting variable genes")
-      tryCatch({
-        var_matrices <- select_variable_genes(object, gene_list, num_cores)
-        report(sprintf("Selected %d variable genes", 
-                       nrow(var_matrices$ref)))
-        
-        object@count.matrices <- object@f.select.matrices <- methods::new(
-          "RefDataList",
-          ref = var_matrices$ref,
-          data = var_matrices$data
-        )
-        
-      }, error = function(e) {
-        stop("Failed to select variable genes: ", e$message)
-      })
+      var_matrices <- select_variable_genes(object, gene_list, num_cores)
+      report(sprintf("Selected %d variable genes", nrow(var_matrices$ref)))
+      
+      object@matrices <- methods::new(
+        "RefDataList",
+        ref = var_matrices$ref,
+        data = var_matrices$data
+      )
     }
     
     # Scale if requested
     if (scale) {
       report(sprintf("Scaling data by %s", scale_by))
-      tryCatch({
-        scale_fn <- if(scale_by == "cells") {
-          scale_by_cells
-        } else {
-          scale_by_genes
-        }
-        
-        object@count.matrices <- object@scale.matrices <- methods::new(
-          "RefDataList",
-          ref = scale_fn(object@count.matrices@ref),
-          data = scale_fn(object@count.matrices@data)
-        )
-        
-      }, error = function(e) {
-        stop("Failed to scale data: ", e$message)
-      })
+      scale_fn <- if(scale_by == "cells") scale_by_cells else scale_by_genes
+      
+      object@matrices <- methods::new(
+        "RefDataList",
+        ref = scale_fn(object@matrices@ref),
+        data = scale_fn(object@matrices@data)
+      )
     }
     
     # Encode cell types and reorder
     report("Encoding cell types")
-    tryCatch({
-      object@annotation$celltype.code <- encode_celltypes(object@annotation$celltype)
-      
-      report("Reordering data")
-      object <- reorder_data(object, "celltype")
-      
-    }, error = function(e) {
-      stop("Failed to encode cell types and reorder data: ", e$message)
-    })
+    object@annotation$celltype.code <- encode_celltypes(object@annotation$celltype)
+    
+    report("Reordering data")
+    object <- reorder_data(object, "celltype")
+    
+    # Initialize training object
+    object@train_object <- methods::new(
+      "traincsfnmf",
+      matrices = object@matrices,
+      annotation = object@annotation,
+      test_annotation = data.frame(),
+      rank = 0,
+      H = Matrix(0),
+      W = Matrix(0),
+      constants = methods::new("helpmat"),
+      parameters = list(),
+      results = list()
+    )
+    
+    # Initialize W and H
+    object@W <- Matrix(0)
+    object@H <- Matrix(0)
     
     # Final validation
     report("Validating final object")
@@ -217,9 +187,8 @@ CreateCSFNMFobject <- function(ref_matrix,
     }
     
     report("CSFNMF object creation complete")
-    return(object)
-    
-  }, threshold = 2000)  # Memory check threshold
+    object
+  })
 }
 
 #' Validate Final CSFNMF Object
@@ -229,18 +198,18 @@ CreateCSFNMFobject <- function(ref_matrix,
 #' @keywords internal
 validate_final_object <- function(object) {
   # Check matrix dimensions
-  if (ncol(object@count.matrices@ref) != nrow(object@annotation)) {
+  if (ncol(object@matrices@ref) != nrow(object@annotation)) {
     return(FALSE)
   }
   
   # Check gene names consistency
-  if (!identical(rownames(object@count.matrices@ref),
-                 rownames(object@count.matrices@data))) {
+  if (!identical(rownames(object@matrices@ref),
+                rownames(object@matrices@data))) {
     return(FALSE)
   }
   
   # Check annotation completeness
-  if (!all(c("celltype", "celltype.code") %in% names(object@annotation))) {
+  if (!all(c("celltype") %in% names(object@annotation))) {
     return(FALSE)
   }
   

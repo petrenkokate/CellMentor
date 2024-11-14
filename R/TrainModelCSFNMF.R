@@ -24,14 +24,14 @@ TrainModelCSFNMF <- function(object,
   
   # Initialize storage lists
   results <- list(
-    loss = list(`no update` = train_object@loss),
-    accuracy = list(`no update` = train_object@accuracy),
+    loss = list(`no update` = train_object@results$loss),
+    accuracy = list(`no update` = train_object@results$accuracy),
     WH = list(`no update` = list(W = train_object@W, H = train_object@H))
   )
   
   # Initial prediction
   singler_pred <- CSFnmfSingleR(train_object)
-  report(sprintf("Initial accuracy: %.4f", train_object@accuracy))
+  report(sprintf("Initial accuracy: %.4f", train_object@results$accuracy))
   
   # Perform updates
   for (update in seq_len(num_update)) {
@@ -46,18 +46,18 @@ TrainModelCSFNMF <- function(object,
     if ("alpha" %in% pra_to_update) {
       real_N <- train_object@constants@N
       train_object@constants@N <- new_paras$alpha * train_object@constants@N
-      train_object@hyper_para$alpha <- sum(train_object@hyper_para$alpha)
+      train_object@parameters$alpha <- sum(train_object@parameters$alpha)
     }
     
     if ("beta" %in% pra_to_update) {
-      train_object@hyper_para$beta <- new_paras$beta
+      train_object@parameters$beta <- new_paras$beta
     }
     
     train_object@constants@Hconst <- calculate_const_for_h(train_object)
     
     # Reinitialize if requested
     if (re_init) {
-      W0_H0 <- initialize_wh(train_object, train_object@init_method)
+      W0_H0 <- initialize_wh(train_object, train_object@parameters$init_method)
       train_object@W <- ensure_dgCMatrix(W0_H0$W)
       train_object@H <- ensure_dgCMatrix(W0_H0$H)
     }
@@ -69,18 +69,18 @@ TrainModelCSFNMF <- function(object,
     update_name <- sprintf("update_%d", update)
     results$WH[[update_name]] <- list(W = ensure_dgCMatrix(train_object@W),
                                       H = ensure_dgCMatrix(train_object@H))
-    results$loss[[update_name]] <- train_object@loss
+    results$loss[[update_name]] <- train_object@results$loss
     
     # Restore alpha if updated
     if ("alpha" %in% pra_to_update) {
-      train_object@hyper_para$alpha <- train_object@hyper_para$alpha * new_paras$alpha
+      train_object@parameters$alpha <- train_object@parameters$alpha * new_paras$alpha
       train_object@constants@N <- real_N
     }
     
     # Calculate accuracy
     h_project <- project_data(
       train_object@W,
-      train_object@count.matrices@data,
+      train_object@matrices@data,  
       seed = constSeed,
       num_cores = num_cores
     )
@@ -97,8 +97,8 @@ TrainModelCSFNMF <- function(object,
   report(sprintf("Best update: %s with accuracy %.4f", best_update, results$accuracy[[best_update]]))
   
   # Update object with best results
-  train_object@accuracy <- results$accuracy[[best_update]]
-  train_object@loss <- results$loss[[best_update]]
+  train_object@results$accuracy <- results$accuracy[[best_update]]
+  train_object@results$loss <- results$loss[[best_update]]
   best_W <- ensure_dgCMatrix(results$WH[[best_update]]$W)
   best_H <- ensure_dgCMatrix(results$WH[[best_update]]$H)
   
@@ -108,12 +108,20 @@ TrainModelCSFNMF <- function(object,
   
   # Calculate final H matrix
   h_combined <- cbind(object@H, h_project)
-  object@H <- ensure_dgCMatrix(h_combined[, colnames(object@count.matrices@ref)])
+  object@H <- ensure_dgCMatrix(h_combined[, colnames(object@matrices@ref)])
   
   # Create update object with all results
-  update_train_object <- methods::new(
+  object@train_object <- methods::new(
     Class = "update_traincsfnmf",
-    train_object,
+    matrices = train_object@matrices,
+    annotation = train_object@annotation,
+    test_annotation = train_object@test_annotation,
+    rank = train_object@parameters$rank,
+    H = train_object@H,
+    W = train_object@W,
+    constants = train_object@constants,
+    parameters = train_object@parameters,
+    results = train_object@results,
     updates = list(
       WH_list = results$WH,
       loss_list = results$loss,
@@ -121,7 +129,6 @@ TrainModelCSFNMF <- function(object,
     )
   )
   
-  object@train_object <- update_train_object
   object
 }
 
@@ -135,7 +142,7 @@ TrainModelCSFNMF <- function(object,
 UpdateHyperpara <- function(train_object, singler_pred, pra_to_update) {
   # Calculate correlation matrix
   correlation <- calculate_correlation_matrix(
-    true_labels = train_object@test.annotation[singler_pred@rownames, "celltype"],
+    true_labels = train_object@test_annotation[singler_pred@rownames, "celltype"],
     pred_labels = singler_pred@listData[["labels"]]
   )
   
@@ -144,12 +151,12 @@ UpdateHyperpara <- function(train_object, singler_pred, pra_to_update) {
     beta = if ("beta" %in% pra_to_update) 
       update_beta(train_object, correlation) 
     else 
-      train_object@hyper_para$beta,
+      train_object@parameters$beta,
     
     alpha = if ("alpha" %in% pra_to_update) 
       update_alpha(train_object, correlation) 
     else 
-      train_object@hyper_para$alpha
+      train_object@parameters$alpha
   )
 }
 
@@ -208,7 +215,7 @@ update_beta <- function(train_object, correlation) {
   }
   
   # Normalize beta values
-  const_beta <- sum(train_object@hyper_para$beta)
+  const_beta <- sum(train_object@parameters$beta) 
   diag_beta_new <- (diag_beta_new * const_beta) / sum(diag_beta_new)
   
   # Create beta matrix
@@ -254,6 +261,7 @@ update_alpha <- function(train_object, correlation) {
     
     # Set alpha values
     diag_alpha_new[colnames(type_data)] <- type_SD_per_cell * wrong_pred
+    
   }
   
   # Normalize alpha values
