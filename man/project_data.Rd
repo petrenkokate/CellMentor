@@ -2,27 +2,63 @@
 % Please edit documentation in R/train_functions.R
 \name{project_data}
 \alias{project_data}
-\title{Project Data onto Basis}
+\title{Project Data onto NMF Basis Matrix}
 \usage{
 project_data(W, X, seed = 1, num_cores = 1, chunk_size = 1000, verbose = TRUE)
 }
 \arguments{
-\item{W}{Basis matrix}
+\item{W}{Basis matrix (genes × rank) containing learned gene weights}
 
-\item{X}{Data matrix}
+\item{X}{Data matrix (genes × cells) to be projected. Must have same number of genes (rows) as W}
 
-\item{seed}{Random seed}
+\item{seed}{Random seed for reproducibility (default: 1)}
 
-\item{num_cores}{Number of cores for parallel processing}
+\item{num_cores}{Number of cores for parallel processing (default: 1).
+If > 1, processing is parallelized across chunks}
 
-\item{chunk_size}{Size of chunks for processing}
+\item{chunk_size}{Number of cells to process in each chunk (default: 1000).
+Smaller chunks use less memory but may be slower}
 
-\item{verbose}{Show progress bar}
+\item{verbose}{Logical; whether to show progress bar (default: TRUE)}
 }
 \value{
-Projection matrix
+A Matrix object (rank × cells) containing the projection coefficients.
+The rows correspond to factors (rank) and columns to cells.
+Additional processing information is stored in attributes:
+- num_chunks: Number of chunks processed
+- chunk_size: Size of chunks used
+- num_cores: Number of cores used
 }
 \description{
-Project Data onto Basis
+Projects new data onto the learned basis matrix (W) using non-negative least squares (NNLS).
+This function is used to obtain cell-type signatures (H matrix) for new query data
+using the gene weights (W matrix) learned during training. The projection is performed
+in chunks to manage memory efficiently, with optional parallel processing.
 }
-\keyword{internal}
+\details{
+The projection is performed using non-negative least squares (NNLS) to solve
+the optimization problem: min ||X - WH||² subject to H >= 0, for each cell
+in the input matrix X. The resulting H matrix contains the cell-type signatures
+for the query data.
+
+For memory efficiency, cells are processed in chunks. The chunk_size parameter
+can be adjusted based on available memory. Parallel processing can be enabled
+by setting num_cores > 1.
+}
+\examples{
+# Project query data using trained model
+query_H <- project_data(
+  W = object@W,                    # Learned gene weights
+  X = object@matrices@data,        # Query data matrix
+  num_cores = 4,                   # Use 4 cores
+  chunk_size = 500                 # Process 500 cells at a time
+)
+
+# Project with progress bar disabled
+query_H <- project_data(
+  W = object@W,
+  X = object@matrices@data,
+  verbose = FALSE
+)
+
+}
