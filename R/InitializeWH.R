@@ -265,73 +265,109 @@ initialize_genes_cluster <- function(data_matrix, k, labels) {
 #' @param labels Cell type labels
 #' @return List containing W and H matrices
 #' @importFrom skmeans skmeans
+#' @importFrom tibble tibble
 #' @keywords internal
-initialize_cells_cluster <- function(data_matrix, k, labels) {
-  eps <- .Machine$double.eps
+initialize_cells_cluster <- function(data_matrix, k, labels){
   
-  # Initialize matrices
-  nFea <- nrow(data_matrix)
-  nSmp <- ncol(data_matrix)
-  W <- matrix(0, nFea, k)
-  H <- matrix(0, k, nSmp)
+  # browser()
+  eps = .Machine$double.eps
   
-  # Perform spherical k-means clustering
-  clusters <- skmeans::skmeans(
-    t(as.matrix(data_matrix + eps)),
-    k,
-    method = "pclust"
-  )
+  nFea = nrow(data_matrix)
+  nSmp = ncol(data_matrix)
   
-  # Get cell clusters and centroids
-  cell_clusters <- clusters$cluster
-  centroids <- matrix(0, nrow = k, ncol = nFea)
-  centroids[1:k,] <- clusters$prototypes
+  W = matrix(0, nFea, k)
+  H = matrix(0, k, nSmp)
+  colnames(H) = colnames(data_matrix)
+  rownames(W) = rownames(data_matrix)
+  rownames(H)= colnames(W)= c(1:k)
   
-  # Process cell type relationships
-  type_cluster_table <- table(labels, cell_clusters)
-  main_types <- tibble::tibble(
-    skmean_clus = seq_len(k),
-    main_type = rownames(type_cluster_table)[apply(type_cluster_table, 2, which.max)]
-  )
+  set.seed(1)
   
-  # Ensure all cell types are represented
-  types <- unique(labels)
-  if (length(unique(main_types$main_type)) != length(types)) {
-    # Handle missing cell types
-    missing_types <- setdiff(types, unique(main_types$main_type))
-    remaining_clusters <- k - length(missing_types)
+  num_clus = k
+  data_for_clus = data_matrix
+  data_for_clus = as.matrix(data_for_clus + eps) # KATE
+  skmeans_clus = skmeans::skmeans(t(data_for_clus), num_clus, method="pclust")
+  cell_clusters = skmeans_clus[["cluster"]]
+  centroids = matrix(0, nrow= k, ncol=nrow(data_matrix))
+  centroids[1:num_clus, ] = skmeans_clus[["prototypes"]]
+  
+  
+  #For each cluster finding the main cell-type
+  celltypeVSclus = table(labels, skmeans_clus[["cluster"]])
+  mainType = tibble::tibble("skmeanClus" = c(1:k), 
+                    "mainType" = rownames(celltypeVSclus)[apply(celltypeVSclus,2,which.max)])
+  
+  types = unique(labels)
+  
+  
+  # Ensure that every cell type is represented by at least one cluster
+  while (length(unique(mainType$mainType)) != length(types)){
+    # Cell types that do not associated with any cluster
+    non_main_types = types[which(!types %in% unique(mainType$mainType))]
+    # Assign clusters to those cell types
+    mainType$mainType[(num_clus - length(non_main_types) + 1):num_clus] = non_main_types
+    num_clus = num_clus - length(non_main_types)
     
-    for (type in missing_types) {
-      cells <- colnames(data_matrix)[labels == type]
-      cluster_num <- which(main_types$main_type == main_types$main_type[remaining_clusters])
-      cell_clusters[cells] <- cluster_num
-      centroids[cluster_num,] <- apply(data_matrix[,cells], 1, median)
-      remaining_clusters <- remaining_clusters - 1
+    for (clus in non_main_types){
+      cells_name = names(which(labels == clus))
+      clus_num = which(mainType$mainType == clus)
+      cell_clusters[cells_name] = clus_num
+      centroids[clus_num, ] = apply(data_matrix[, cells_name, drop = FALSE], 1, median)
+    }
+    
+    data_for_clus = data_for_clus[, - which(labels[colnames(data_for_clus)] %in% non_main_types)]
+    skmeans_clus = skmeans::skmeans(t(data_for_clus), num_clus, method="pclust")
+    cell_clusters[names(skmeans_clus[["cluster"]])] = skmeans_clus[["cluster"]]
+    celltypeVSclus = table(labels[names(skmeans_clus[["cluster"]])], skmeans_clus[["cluster"]])
+    mainType$mainType[1:num_clus] = rownames(celltypeVSclus)[apply(celltypeVSclus,2,which.max)]
+    centroids[1:num_clus, ] = skmeans_clus[["prototypes"]]
+    
+  }
+  
+  # Similarity <- function(cell, centroid) {lsa::cosine(cell, centroid)}
+  Similarity <- function(cell, centroid) { #KATE
+    if (all(cell == 0) || all(centroid == 0)) {
+      return(0)  # Return zero if either vector is all zeros
+    }
+    lsa::cosine(cell, centroid)
+  }
+  
+  # Each cell belonging to a cluster whose main cell-type does not match the cell's cell-type 
+  # is associated to another cluster with the highest similarity that have the same main cell-type 
+  missPredClus = colnames(data_matrix)[which(labels != mainType$mainType[cell_clusters])]
+  newClus = as.integer(cell_clusters)
+  names(newClus) = names(cell_clusters)
+  
+  relevantClus = similarMatrix = t(H)
+  for (i in 1:k){
+    similarMatrix[,i] = apply(data_matrix, 2, function(x){Similarity(x, centroids[i, ])})
+  }
+  
+  # Only clusters that have the same main cell type
+  for (i in rownames(relevantClus)){
+    relevantClus[i, which(mainType$mainType == labels[i])] = 1
+  }
+  
+  H = t(similarMatrix)
+  
+  similarMatrix = similarMatrix * relevantClus
+  newClus[missPredClus] = unlist(apply(similarMatrix[missPredClus, ], 1, which.max))
+  
+  
+  for (clus in names(table(newClus))){
+    CellsName = names(which(newClus == clus))
+    if (length(CellsName) == 1){
+      W[, clus] = data_matrix[,CellsName]
+    }
+    else{
+      W[, clus] = apply(data_matrix[,CellsName], 1, median)
     }
   }
   
-  # Calculate similarity matrix
-  H <- calculate_similarity_matrix(data_matrix, centroids, cell_clusters)
+  #Evoid zero elements
+  W = pmax(W, eps)
   
-  # Calculate W matrix
-  for (cluster in seq_len(k)) {
-    cells <- names(cell_clusters)[cell_clusters == cluster]
-    if (length(cells) == 1) {
-      W[, cluster] <- data_matrix[,cells]
-    } else {
-      W[, cluster] <- apply(data_matrix[,cells], 1, median)
-    }
-  }
-  
-  # Clean up near-zero elements
-  W <- pmax(W, eps)
-  
-  # Set dimensions
-  colnames(H) <- colnames(data_matrix)
-  rownames(W) <- rownames(data_matrix)
-  rownames(H) <- colnames(W) <- seq_len(k)
-  
-  list(W = as(W, "Matrix"), H = as(H, "Matrix"))
+  return(list("W" = Matrix(W, sparse=TRUE), "H" = Matrix(H, sparse=TRUE)))
 }
 
 #' Calculate Similarity Matrix
