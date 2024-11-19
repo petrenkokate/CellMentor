@@ -171,6 +171,14 @@ project_data <- function(W, X, seed = 1, num_cores = 1,
   k <- ncol(W)
   n_cells <- ncol(X)
   
+  # Handle chunk_size
+  if (is.null(chunk_size)) {
+    chunk_size <- n_cells  # one chunk for all cells
+  } else if (chunk_size > n_cells) {
+    chunk_size <- n_cells
+    warning("chunk_size was larger than number of cells, using n_cells instead")
+  }
+  
   # Create progress bar if verbose
   if (verbose) {
     pb <- progress::progress_bar$new(
