@@ -130,7 +130,8 @@ select_optimal_parameters <- function(object,
         train_matrix = working_object@matrices@data,
         max_p_value = 0.01,
         main_matrix = working_object@matrices@ref,
-        verbose = verbose
+        verbose = verbose,
+        numCores = num_cores
       )
       k <- rank_result$rank
       report(sprintf("Optimal rank determined: %d", k))

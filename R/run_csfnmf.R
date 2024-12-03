@@ -53,8 +53,9 @@ RunCSFNMF <- function(object,
     k <- SelectRank(
       train_matrix = train_object@matrices@data,
       max_p_value = max_p_value,
-      main_matrix = train_object@matrices@ref
-    )
+      main_matrix = train_object@matrices@ref, 
+      numCores = num_cores
+    )$rank
   } else {
     # Check k for skmeanGenes method
     if (init_method == "skmeanGenes") {
