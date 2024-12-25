@@ -59,27 +59,19 @@ SelectRank <- function(train_matrix,
   
   # Process optimal beta values
   for (beta_opt in beta_opt_list) {
-    result <- with_memory_check({
-      SelectAlphaForConstBeta(train_matrix, beta = beta_opt)
-    })
+    result <- SelectAlphaForConstBeta(train_matrix, beta = beta_opt)
     
-    u_v <- with_memory_check({
-      NonSquareSinkhornKnopp(main_matrix, alpha = result$alpha, beta = beta_opt)
-    })
+    u_v <- NonSquareSinkhornKnopp(main_matrix, alpha = result$alpha, beta = beta_opt)
     
     # Stabilize values and calculate matrices
     x_vec <- pmax(u_v[["x"]], 1e-10)
     y_vec <- pmax(u_v[["y"]], 1e-10)
     
-    X_hat <- with_memory_check({
-      diag(sqrt(x_vec), nrow = n.genes, ncol = n.genes) %*%
+    X_hat <- diag(sqrt(x_vec), nrow = n.genes, ncol = n.genes) %*%
         main_matrix %*%
         diag(sqrt(y_vec), nrow = n.cells, ncol = n.cells)
-    })
     
-    dubble_X_hat <- with_memory_check({
-      (1/n.cells) * (X_hat %*% Matrix::t(X_hat) + diag(1e-10, n.genes))
-    })
+    dubble_X_hat <- (1/n.cells) * (X_hat %*% Matrix::t(X_hat) + diag(1e-10, n.genes))
     
     ev_hat <- eigen(dubble_X_hat)
     k_opt <- sum(ev_hat$values > upper_edge)
@@ -237,15 +229,11 @@ SelectAlphaForConstBeta <- function(Y, beta) {
   x_vec <- pmax(u_v[["x"]], 1e-10)
   y_vec <- pmax(u_v[["y"]], 1e-10)
   
-  Y_hat <- with_memory_check({
-    diag(sqrt(x_vec), nrow = num_genes, ncol = num_genes) %*% Y %*% 
+  Y_hat <- diag(sqrt(x_vec), nrow = num_genes, ncol = num_genes) %*% Y %*% 
       diag(sqrt(y_vec), nrow = num_cells, ncol = num_cells)
-  })
-
-  dubble_Y_hat <- with_memory_check({
-    (1/num_cells) * (Y_hat %*% Matrix::t(Y_hat) + diag(1e-10, num_genes))
-  })
-
+  
+  dubble_Y_hat <- (1/num_cells) * (Y_hat %*% Matrix::t(Y_hat) + diag(1e-10, num_genes))
+  
   ev_list <- eigen(dubble_Y_hat)$values
   gamma <- num_genes/num_cells
   
