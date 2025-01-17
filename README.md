@@ -8,7 +8,7 @@ You can install CellMentor directly from GitHub using devtools:
 
 ```R
 if (!require("devtools")) install.packages("devtools")
-devtools::install_github("petrenkokate/CellMentor")
+devtools::install_github("petrenkokate/CellMentor", dependencies = TRUE)
 ```
 
 ## Basic Usage
