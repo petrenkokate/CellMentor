@@ -3,26 +3,52 @@ Type: Package
 Title: Supervised Non-negative Matrix Factorization for Dimensional Reduction in Single-Cell Analysis
 Version: 0.1.0
 Authors@R: person("Ekaterina", "Petrenko", email = "petrenko.kate@icloud.com", role = c("aut", "cre"))
-Description: 
+Description: A package implementing supervised cell type aware non-negative matrix factorization (NMF) 
+    for dimensional reduction in single-cell RNA sequencing analysis.
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
+biocViews:
+    SingleCell,
+    GeneExpression,
+    Transcriptomics
 Imports:
-    SeuratData,
-    Seurat,
-    scRNAseq,
+    methods,
+    Matrix,
+    SingleR,
+    Seurat (>= 4.0.0),
     stringr,
     scater,
-    AnnotationHub,
-    GenomicRanges,
-    SingleCellExperiment,
     plyr,
     utils,
     rprojroot,
-    ensembldb
+    stats,
+    parallel,
+    progress,
+    ggplot2,
+    data.table,
+    magrittr,
+    RMTstat,
+    sparsesvd,
+    cluster,
+    skmeans,
+    MLmetrics,
+    tibble,
+    lsa
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
 Depends: 
     R (>= 4.0)
+Remotes:
+    satijalab/seurat-data,
+    bioc::scRNAseq,
+    bioc::ensembldb,
+    bioc::AnnotationHub,
+    bioc::GenomicRanges,
+    bioc::SingleCellExperiment
 LazyData: true
+VignetteBuilder: knitr
