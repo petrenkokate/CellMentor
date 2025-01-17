@@ -108,10 +108,7 @@ pbmcsca_data <- function() {
   )
   
   # Load and process data
-  utils::data("pbmcsca", envir = environment())
-  if (!exists("pbmcsca")) {
-    stop("Could not load zheng_data. Please ensure the package is properly installed.")
-  }
+  pbmcsca <- load_pbmcsca_data()
   
   # Quality control
   pbmcsca[["percent.mt"]] <- PercentageFeatureSet(pbmcsca, pattern = "^MT-")
