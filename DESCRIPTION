@@ -36,7 +36,12 @@ Imports:
     MLmetrics,
     tibble,
     lsa,
-    nnls
+    nnls,
+    scRNAseq,
+    ensembldb,
+    AnnotationHub,
+    GenomicRanges,
+    SingleCellExperiment
 Suggests:
     testthat (>= 3.0.0),
     knitr,
