@@ -50,5 +50,5 @@ Remotes:
     bioc::AnnotationHub,
     bioc::GenomicRanges,
     bioc::SingleCellExperiment
-LazyData: true
+LazyData: false
 VignetteBuilder: knitr
