@@ -75,6 +75,6 @@ seurat_object$CellMentor <- CreateDimReducObject(
 )
 
 # Visualization
-seurat_object <- RunUMAP(seurat_object, reduction = 'CellMentor', dims= 1:K_VALUE)
+seurat_object <- RunUMAP(seurat_object, reduction = 'CellMentor', dims= 1:optimal_params$best_params$k)
 DimPlot(seurat_object)
 ```
