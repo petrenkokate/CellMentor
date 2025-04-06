@@ -4,12 +4,12 @@
 \alias{UpdateHyperpara}
 \title{Update Hyperparameters}
 \usage{
-UpdateHyperpara(train_object, singler_pred, pra_to_update)
+UpdateHyperpara(train_object, full_object, clusters, pra_to_update)
 }
 \arguments{
 \item{train_object}{Training object}
 
-\item{singler_pred}{SingleR predictions}
+\item{clusters}{Clustering assignments}
 
 \item{pra_to_update}{Parameters to update}
 }

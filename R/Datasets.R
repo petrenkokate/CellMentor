@@ -108,7 +108,17 @@ pbmcsca_data <- function() {
   )
   
   # Load and process data
-  pbmcsca <- load_pbmcsca_data()
+  if (!requireNamespace("SeuratData", quietly = TRUE)) {
+    message("Installing SeuratData...")
+    remotes::install_github("satijalab/seurat-data")
+  }
+  
+  if (!requireNamespace("pbmcsca", quietly = TRUE)) {
+    SeuratData::InstallData("pbmcsca")
+  }
+  library(pbmcsca.SeuratData)
+  data("pbmcsca")
+  pbmcsca <- UpdateSeuratObject(pbmcsca)
   
   # Quality control
   pbmcsca[["percent.mt"]] <- PercentageFeatureSet(pbmcsca, pattern = "^MT-")

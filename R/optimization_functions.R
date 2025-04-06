@@ -142,9 +142,9 @@ update_h <- function(object, num_cores = 1) {
 #' @importFrom progress progress_bar
 #' @keywords internal
 update_wh <- function(object, 
-                                theta, 
-                                verbose = TRUE, 
-                                num_cores = 1) {
+                      theta, 
+                      verbose = TRUE, 
+                      num_cores = 1) {
   
   # Initialize convergence monitoring
   loss <- numeric()

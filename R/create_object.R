@@ -204,7 +204,7 @@ validate_final_object <- function(object) {
   
   # Check gene names consistency
   if (!identical(rownames(object@matrices@ref),
-                rownames(object@matrices@data))) {
+                 rownames(object@matrices@data))) {
     return(FALSE)
   }
   

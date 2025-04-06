@@ -21,94 +21,106 @@ TrainModelCSFNMF <- function(object,
   
   report <- create_reporter(verbose)
   train_object <- object@train_object
+  full_object <- methods::new("traincsfnmf")
+  full_object@matrices <- object@matrices
+  full_object@annotation <- object@annotation
   
+  full_object@parameters <- train_object@parameters
+  full_object@constants <- train_object@constants
+  full_object@W <- object@W
+  full_object@H <- object@H
   # Initialize storage lists
   results <- list(
     loss = list(`no update` = train_object@results$loss),
-    accuracy = list(`no update` = train_object@results$accuracy),
-    WH = list(`no update` = list(W = train_object@W, H = train_object@H))
+    nmi = list(`no update` = train_object@results$nmi),
+    WH = list(`no update` = list(W = full_object@W, H = full_object@H))
   )
   
   # Initial prediction
-  singler_pred <- CSFnmfSingleR(train_object)
-  report(sprintf("Initial accuracy: %.4f", train_object@results$accuracy))
-  
+  h_project <- project_data(
+    W = full_object@W,
+    X = train_object@matrices@data,
+    seed = constSeed,
+    num_cores = num_cores
+  )
+  init_clusters <- calculate_performance(train_object, h_project, return_pred = T)
+  report(sprintf("Initial NMI: %.4f", train_object@results$nmi))
+  clusters <- init_clusters$clusters 
   # Perform updates
   for (update in seq_len(num_update)) {
     report(sprintf("Update %d/%d", update, num_update))
     
     # Update hyperparameters
-    new_paras <- with_memory_check({
-      UpdateHyperpara(train_object, singler_pred, pra_to_update)
-    })
+    new_paras <- UpdateHyperpara(train_object, full_object, clusters, pra_to_update)
+
     
     # Update helper matrices
     if ("alpha" %in% pra_to_update) {
-      real_N <- train_object@constants@N
-      train_object@constants@N <- new_paras$alpha * train_object@constants@N
-      train_object@parameters$alpha <- sum(train_object@parameters$alpha)
+      real_N <- full_object@constants@N
+      full_object@constants@N <- new_paras$alpha * full_object@constants@N
+      full_object@parameters$alpha <- sum(full_object@parameters$alpha)
     }
     
     if ("beta" %in% pra_to_update) {
-      train_object@parameters$beta <- new_paras$beta
+      full_object@parameters$beta <- new_paras$beta
     }
     
-    train_object@constants@Hconst <- calculate_const_for_h(train_object)
+    full_object@constants@Hconst <- calculate_const_for_h(full_object)
     
     # Reinitialize if requested
     if (re_init) {
-      W0_H0 <- initialize_wh(train_object, train_object@parameters$init_method)
-      train_object@W <- ensure_dgCMatrix(W0_H0$W)
-      train_object@H <- ensure_dgCMatrix(W0_H0$H)
+      W0_H0 <- initialize_wh(full_object, full_object@parameters$init_method)
+      full_object@W <- ensure_dgCMatrix(W0_H0$W)
+      full_object@H <- ensure_dgCMatrix(W0_H0$H)
     }
     
     # Update W and H matrices
-    train_object <- update_wh(train_object, theta, verbose)
+    full_object <- update_wh(full_object, theta, verbose)
     
     # Store results
     update_name <- sprintf("update_%d", update)
-    results$WH[[update_name]] <- list(W = ensure_dgCMatrix(train_object@W),
-                                      H = ensure_dgCMatrix(train_object@H))
-    results$loss[[update_name]] <- train_object@results$loss
+    results$WH[[update_name]] <- list(W = ensure_dgCMatrix(full_object@W),
+                                      H = ensure_dgCMatrix(full_object@H))
+    results$loss[[update_name]] <- full_object@results$loss
     
     # Restore alpha if updated
     if ("alpha" %in% pra_to_update) {
-      train_object@parameters$alpha <- train_object@parameters$alpha * new_paras$alpha
-      train_object@constants@N <- real_N
+      full_object@parameters$alpha <- full_object@parameters$alpha * new_paras$alpha
+      full_object@constants@N <- real_N
     }
     
-    # Calculate accuracy
+    # Calculate NMI
     h_project <- project_data(
-      train_object@W,
+      full_object@W,
       train_object@matrices@data,  
       seed = constSeed,
       num_cores = num_cores
     )
     
-    accuracy_result <- calculate_accuracy(train_object, h_project, return_pred = TRUE)
-    singler_pred <- accuracy_result$SingleRpred
-    results$accuracy[[update_name]] <- accuracy_result$accuracy
+    nmi_result <- calculate_performance(train_object, h_project, return_pred = TRUE)
+    clusters <- nmi_result$clusters
+    results$nmi[[update_name]] <- nmi_result$nmi
     
-    report(sprintf("Accuracy after update %d: %.4f", update, accuracy_result$accuracy))
+    report(sprintf("NMI after update %d: %.4f", update, nmi_result$nmi))
   }
   
   # Select best update
-  best_update <- names(which.max(unlist(results$accuracy)))
-  report(sprintf("Best update: %s with accuracy %.4f", best_update, results$accuracy[[best_update]]))
+  best_update <- names(which.max(unlist(results$nmi)))
+  report(sprintf("Best update: %s with NMI %.4f", best_update, results$nmi[[best_update]]))
   
   # Update object with best results
-  train_object@results$accuracy <- results$accuracy[[best_update]]
+  train_object@results$nmi <- results$nmi[[best_update]]
   train_object@results$loss <- results$loss[[best_update]]
   best_W <- ensure_dgCMatrix(results$WH[[best_update]]$W)
   best_H <- ensure_dgCMatrix(results$WH[[best_update]]$H)
   
   train_object@W <- best_W
-  train_object@H <- best_H
+  train_object@H <- best_H[, colnames(train_object@matrices@ref)]
   object@W <- best_W
   
   # Calculate final H matrix
   h_combined <- cbind(object@H, h_project)
-  object@H <- ensure_dgCMatrix(h_combined[, colnames(object@matrices@ref)])
+  object@H <- best_H
   
   # Create update object with all results
   object@train_object <- methods::new(
@@ -125,7 +137,7 @@ TrainModelCSFNMF <- function(object,
     updates = list(
       WH_list = results$WH,
       loss_list = results$loss,
-      accuracy_list = results$accuracy
+      nmi_list = results$nmi
     )
   )
   
@@ -135,40 +147,40 @@ TrainModelCSFNMF <- function(object,
 #' Update Hyperparameters
 #'
 #' @param train_object Training object
-#' @param singler_pred SingleR predictions
+#' @param clusters Clustering assignments
 #' @param pra_to_update Parameters to update
 #' @return List of updated parameters
 #' @keywords internal
-UpdateHyperpara <- function(train_object, singler_pred, pra_to_update) {
+UpdateHyperpara <- function(train_object, full_object, clusters, pra_to_update) {
   # Calculate correlation matrix
   correlation <- calculate_correlation_matrix(
-    true_labels = train_object@test_annotation[singler_pred@rownames, "celltype"],
-    pred_labels = singler_pred@listData[["labels"]]
+    true_labels = train_object@test_annotation$celltype,
+    clusters = clusters
   )
   
   # Update parameters
   list(
     beta = if ("beta" %in% pra_to_update) 
-      update_beta(train_object, correlation) 
+      update_beta(full_object, correlation) 
     else 
-      train_object@parameters$beta,
+      full_object@parameters$beta,
     
     alpha = if ("alpha" %in% pra_to_update) 
-      update_alpha(train_object, correlation) 
+      update_alpha(full_object, correlation) 
     else 
-      train_object@parameters$alpha
+      full_object@parameters$alpha
   )
 }
 
 #' Calculate Correlation Matrix
 #'
 #' @param true_labels True cell type labels
-#' @param pred_labels Predicted cell type labels
+#' @param clusters Cluster assignments
 #' @return Correlation matrix
 #' @keywords internal
-calculate_correlation_matrix <- function(true_labels, pred_labels) {
+calculate_correlation_matrix <- function(true_labels, clusters) {
   # Calculate initial correlation
-  correlation <- table(true_labels, pred_labels)
+  correlation <- table(true_labels, clusters)
   
   # Handle missing types
   missing_types <- setdiff(rownames(correlation), colnames(correlation))
@@ -182,13 +194,8 @@ calculate_correlation_matrix <- function(true_labels, pred_labels) {
     correlation <- cbind(correlation, add_type)
   }
   
-  # Zero out correct predictions
-  to_zero <- outer(
-    rownames(correlation),
-    gsub('_[0-9]*', '', colnames(correlation)),
-    "=="
-  )
-  correlation[to_zero] <- 0
+  # Normalize by row sums (optional: makes it proportional)
+  correlation <- correlation / rowSums(correlation)
   
   correlation
 }
@@ -205,12 +212,14 @@ update_beta <- function(train_object, correlation) {
   diag_beta_new <- numeric(num_pair_clusters)
   beta_names <- character(num_pair_clusters)
   
-  # Calculate new beta values
+  # Calculate new beta values based on cluster correlations
   for (col in seq_len(num_pair_clusters)) {
     cluster1 <- rownames(P)[which(P[,col] > 0)]
     cluster2 <- rownames(P)[which(P[,col] < 0)]
-    parameter <- correlation[cluster1, cluster2] / max(sum(correlation[cluster1,]), 1)
-    diag_beta_new[col] <- parameter
+    
+    # Calculate separation between clusters
+    separation <- mean(correlation[cluster1,]) - correlation[cluster1, cluster2]
+    diag_beta_new[col] <- max(separation, 0)
     beta_names[col] <- paste0(cluster1, "->", cluster2)
   }
   
@@ -225,6 +234,7 @@ update_beta <- function(train_object, correlation) {
   beta_new
 }
 
+
 #' Update Alpha Parameter
 #'
 #' @param train_object Training object
@@ -233,43 +243,42 @@ update_beta <- function(train_object, correlation) {
 #' @importFrom matrixStats rowMedians
 #' @keywords internal
 update_alpha <- function(train_object, correlation) {
-  num_cells <- ncol(train_object@H)
-  num_cells_per_subtype <- table(train_object@annotation$celltype)
-  diag_alpha_new <- numeric(num_cells)
-  names(diag_alpha_new) <- colnames(train_object@H)
+  # Get all cell names from N matrix
+  all_cells <- colnames(train_object@constants@N)
+  
+  # Create full-sized alpha matrix
+  diag_alpha_new <- numeric(length(all_cells))
+  names(diag_alpha_new) <- all_cells
   
   # Process each cell type
-  for (type in names(num_cells_per_subtype)) {
-    # Get data for current type
+  for (type in names(table(train_object@annotation$celltype))) {
     type_cells <- which(train_object@annotation$celltype == type)
-    type_data <- train_object@H[, type_cells, drop = FALSE]
     
-    # Calculate median and differences
+    # Your existing calculations for cells of this type
+    type_data <- train_object@H[, type_cells, drop = FALSE]
     type_median <- matrixStats::rowMedians(as.matrix(type_data))
     matrix_median <- matrix(
       type_median,
       nrow = length(type_median),
-      ncol = num_cells_per_subtype[type]
+      ncol = length(type_cells)
     )
     
-    # Calculate distances
     diff_cells_median_type <- (type_data - matrix_median)^2
     type_SD_per_cell <- sqrt(colSums(diff_cells_median_type))
     
-    # Calculate wrong predictions
-    wrong_pred <- sum(correlation[type,]) / num_cells_per_subtype[type]
+    # Get wrong cluster proportion for this type
+    wrong_cluster <- sum(correlation[type, ]) / length(type_cells)
     
-    # Set alpha values
-    diag_alpha_new[colnames(type_data)] <- type_SD_per_cell * wrong_pred
-    
+    # Set values in full alpha vector
+    diag_alpha_new[type_cells] <- type_SD_per_cell * wrong_cluster
   }
   
-  # Normalize alpha values
+  # Normalize
   diag_alpha_new <- diag_alpha_new / sum(diag_alpha_new)
   
-  # Create alpha matrix
+  # Create matrix
   alpha_new <- Matrix::Diagonal(x = diag_alpha_new)
-  colnames(alpha_new) <- rownames(alpha_new) <- names(diag_alpha_new)
+  colnames(alpha_new) <- rownames(alpha_new) <- all_cells
   
   alpha_new
 }

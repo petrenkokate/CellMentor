@@ -8,23 +8,19 @@
 #' @param max_p_value Maximum p-value for rank selection
 #' @param max.iter Maximum number of iterations
 #' @param W0_H0 Initial W and H matrices
-#' @param init_method Initialization method ("uniform", "regulated", "NNDSVD", "skmeanGenes", "skmeanCells")
+#' @param init_method Initialization method
 #' @param theta Convergence threshold
 #' @param const.alpha Alpha constraint parameter
-#' @param const.beta Beta constraint parameter (NULL for automatic)
+#' @param const.beta Beta constraint parameter
 #' @param const.gamma Gamma constraint parameter
 #' @param const.delta Delta constraint parameter
 #' @param verbose Show progress messages
 #' @param seed Random seed
 #' @param num_cores Number of cores for parallel processing
-#' @param chunk_size Size of chunks for processing (NULL for automatic)
 #'
 #' @return Updated CSFNMF object
-#' @importFrom parallel mclapply detectCores
-#' @importFrom progress progress_bar
-#' @importFrom nnls nnls
 #' @export
-RunCSFNMF <- function(object,
+RunCSFNMF <- function(train_object,
                       k = NULL,
                       max_p_value = 0.01,
                       max.iter = 100,
@@ -38,36 +34,12 @@ RunCSFNMF <- function(object,
                       verbose = TRUE,
                       seed = 1,
                       num_cores = 1,
-                      chunk_size = NULL) {
-
-  # Set up reporting
+                      whole_object = FALSE) {
+  
   report <- create_reporter(verbose)
   
-  # Initialize training object
-  report("Creating training object")
-  train_object <- divide_reference_data(object, seed)
   
-  # Select or set rank
-  report("Determining rank")
-  if (is.null(k)) {
-    k <- SelectRank(
-      train_matrix = train_object@matrices@data,
-      max_p_value = max_p_value,
-      main_matrix = train_object@matrices@ref, 
-      numCores = num_cores
-    )$rank
-  } else {
-    # Check k for skmeanGenes method
-    if (init_method == "skmeanGenes") {
-      max_k <- floor(nrow(train_object@matrices@ref) / 2) - 1
-      if (k > max_k) {
-        warning(sprintf("k reduced from %d to %d", k, max_k))
-        k <- max_k
-      }
-    }
-  }
-  
-  # Initialize parameters list
+  # Initialize parameters
   parameters <- list(
     rank = k,
     max_iter = max.iter,
@@ -78,13 +50,13 @@ RunCSFNMF <- function(object,
     delta = const.delta
   )
   train_object@parameters <- parameters
-  
   # Initialize results list
   train_object@results <- list(
     loss = numeric(0),
-    accuracy = NA
+    nmi = NA,
+    predictions = NULL
   )
-  
+
   # Initialize W and H if not provided
   if (is.null(W0_H0)) {
     report("Initializing W and H matrices")
@@ -102,9 +74,8 @@ RunCSFNMF <- function(object,
     parameters$beta <- standard_beta(train_object, const.beta)
   }
   
-  # Calculate helper matrices
   report("Calculating helper matrices")
-  train_object <- calculate_help_matrices(train_object)
+  train_object@constants <- calculate_help_matrices(train_object)
   
   # Calculate alpha
   report("Calculating alpha")
@@ -130,48 +101,47 @@ RunCSFNMF <- function(object,
   parameters$alpha <- real_alpha
   train_object@constants@N <- real_N
   
-  # Determine chunk size if not provided
-  if (is.null(chunk_size)) {
-    chunk_size <- determine_chunk_size(ncol(train_object@matrices@data))
+  if (!whole_object) {
+    # Project data and calculate performance
+    report("Calculating projections and performance metrics")
+    h_project <- project_data(
+      W = train_object@W,
+      X = train_object@matrices@data,
+      seed = seed,
+      num_cores = num_cores,
+      verbose = verbose
+    )
+    
+    # Calculate NMI
+    report("Calculating NMI")
+    perf_result <- calculate_performance(train_object, h_project, return_pred = TRUE)
+    train_object@results$nmi <- perf_result$nmi
+    train_object@results$predictions <- perf_result$SingleRpred
+    
+    if (verbose) {
+      message(sprintf("Final NMI: %.4f", perf_result$nmi))
+    }
+    # Add processing info
+    attr(train_object, "processing_info") <- list(
+      num_cores_used = num_cores,
+      iterations = length(train_object@results$loss),
+      final_loss = tail(train_object@results$loss, 1),
+      final_nmi = perf_result$nmi,
+      projection_info = attr(h_project, "processing_info")
+    )
+    
   }
   
-  # Calculate projection with optimized function
-  report("Calculating H projection")
-  h_project <- project_data(
-    W = train_object@W,
-    X = train_object@matrices@data,
-    seed = seed,
-    num_cores = num_cores,
-    chunk_size = chunk_size,
-    verbose = verbose
-  )
-  
-  # Calculate accuracy
-  report("Calculating accuracy")
-  accuracy <- calculate_accuracy(train_object, h_project)
-  train_object@results$accuracy <- accuracy
-  if (verbose) {
-    message(sprintf("Final accuracy: %.4f", accuracy))
+  else {
+    # Add processing info
+    attr(train_object, "processing_info") <- list(
+      num_cores_used = num_cores,
+      iterations = length(train_object@results$loss),
+      final_loss = tail(train_object@results$loss, 1)
+    )
   }
   
-  # Update main object
-  object@train_object <- train_object
-  object@W <- ensure_dgCMatrix(train_object@W)
-  object@H <- ensure_dgCMatrix(cbind(
-    train_object@H,
-    h_project
-  )[, colnames(object@matrices@ref)])
-  
-  # Add processing info
-  attr(object, "processing_info") <- list(
-    num_cores_used = num_cores,
-    chunk_size = chunk_size,
-    iterations = length(train_object@results$loss),
-    final_loss = tail(train_object@results$loss, 1),
-    projection_info = attr(h_project, "processing_info")
-  )
-  
-  object
+  train_object
 }
 
 #' Determine optimal chunk size

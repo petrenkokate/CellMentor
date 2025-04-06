@@ -4,12 +4,12 @@
 \alias{calculate_correlation_matrix}
 \title{Calculate Correlation Matrix}
 \usage{
-calculate_correlation_matrix(true_labels, pred_labels)
+calculate_correlation_matrix(true_labels, clusters)
 }
 \arguments{
 \item{true_labels}{True cell type labels}
 
-\item{pred_labels}{Predicted cell type labels}
+\item{clusters}{Cluster assignments}
 }
 \value{
 Correlation matrix

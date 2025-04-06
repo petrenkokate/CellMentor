@@ -2,7 +2,7 @@
 % Please edit documentation in R/SelectRank.R
 \name{NonSquareSinkhornKnopp}
 \alias{NonSquareSinkhornKnopp}
-\title{Sinkhorn-Knopp Matrix Scaling}
+\title{Corrected Sinkhorn-Knopp Matrix Scaling}
 \usage{
 NonSquareSinkhornKnopp(
   A,
@@ -33,6 +33,6 @@ NonSquareSinkhornKnopp(
 List of scaling vectors
 }
 \description{
-Sinkhorn-Knopp Matrix Scaling
+Corrected Sinkhorn-Knopp Matrix Scaling
 }
 \keyword{internal}

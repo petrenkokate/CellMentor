@@ -7,7 +7,7 @@
 plot_parameter_search(results)
 }
 \arguments{
-\item{results}{Results from select_optimal_parameters}
+\item{results}{Results from CellMentor}
 }
 \value{
 ggplot object with visualization of parameter search results

@@ -16,7 +16,7 @@ update_wh(object, theta, verbose = TRUE, num_cores = 1)
 \item{num_cores}{Number of cores for parallel processing}
 }
 \value{
-Updated object
+Updated object with optimization results
 }
 \description{
 Update W and H Matrices

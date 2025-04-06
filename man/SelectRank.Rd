@@ -2,7 +2,7 @@
 % Please edit documentation in R/SelectRank.R
 \name{SelectRank}
 \alias{SelectRank}
-\title{Select Optimal Rank}
+\title{Optimized Rank Selection}
 \usage{
 SelectRank(
   train_matrix,
@@ -10,7 +10,6 @@ SelectRank(
   jump_step = 0.05,
   numCores = 1,
   range = c(0, 1),
-  main_matrix = NULL,
   verbose = TRUE
 )
 }
@@ -25,13 +24,13 @@ SelectRank(
 
 \item{range}{Range for beta search (default: c(0,1))}
 
-\item{main_matrix}{Optional main matrix}
+\item{verbose}{Show progress}
 
-\item{verbose}{Show progress messages}
+\item{main_matrix}{Optional main matrix}
 }
 \value{
 List containing rank value and scaling parameters
 }
 \description{
-Select Optimal Rank
+Optimized Rank Selection
 }

@@ -69,11 +69,11 @@ divide_reference_data <- function(object, seed = 1) {
   )
   
   train_cells <- dt[, .(
-    cell_id = sample(cell_id, ceiling(.N/2))
+    cell_id = sample(cell_id, ceiling(.N * 0.75))
   ), by = celltype][, cell_id]
   
   # Get data matrices
-  data_matrix <- object@matrices@ref  # Changed from count.matrices
+  data_matrix <- object@matrices@ref
   train_matrix <- data_matrix[, train_cells]
   
   # Handle zero genes using sparse matrix operations

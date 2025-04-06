@@ -18,7 +18,7 @@
 #'          - "NNDSVD": Non-negative Double SVD
 #'          - "skmeanGenes": Gene clustering-based
 #'          - "skmeanCells": Cell clustering-based
-#'          Default: c("NNDSVD")
+#'          Default: c("regulated")
 #' @param alpha_range Vector of `alpha` values to test.
 #'          Controls within-class scatter (cell similarity within the same type).
 #'          Default: c(1, 5, 10)
@@ -67,10 +67,10 @@
 #'
 #' @examples
 #' # Basic usage with default parameter ranges
-#' optimal_params <- select_optimal_parameters(object)
+#' optimal_params <- CellMentor(object)
 #'
 #' # Custom parameter ranges with parallel processing
-#' optimal_params <- select_optimal_parameters(
+#' optimal_params <- CellMentor(
 #'   object,
 #'   k = 50,
 #'   init_methods = c("NNDSVD"),
@@ -93,10 +93,9 @@
 #' \code{\link{plot_parameter_search}} for results visualization
 #' 
 #' @export
-select_optimal_parameters <- function(object,
+CellMentor <- function(object,
                                       k = NULL,
-                                      init_methods = c("uniform", "regulated", "NNDSVD", 
-                                                       "skmeanGenes", "skmeanCells"),
+                                      init_methods = c("regulated"),
                                       alpha_range = c(1, 5, 10),
                                       beta_range = c(1, 5, 10),
                                       gamma_range = c(0, 0.001, 0.1, 1),
@@ -104,19 +103,17 @@ select_optimal_parameters <- function(object,
                                       n_iter = 1,
                                       verbose = TRUE,
                                       num_cores = 1,
-                                      subset_size = 0.3) {
+                                      seed = 1) {
   
   # Create reporter for progress messages
   report <- create_reporter(verbose)
   
-  # Handle data subsetting if requested
-  working_object <- if(subset_size < 1) {
-    report(sprintf("Creating %.0f%% data subset for parameter search", subset_size * 100))
-    create_data_subset(object, subset_size)
-  } else {
-    report("Using full dataset for parameter search")
-    object
-  }
+
+  report("Creating training object")
+  working_object <- divide_reference_data(object, seed)
+  full_object <- methods::new("traincsfnmf")
+  full_object@matrices <- object@matrices
+  full_object@annotation <- object@annotation
   
   # Determine k value
   if (is.null(k)) {
@@ -127,13 +124,12 @@ select_optimal_parameters <- function(object,
     } else {
       report("Determining optimal rank")
       rank_result <- SelectRank(
-        train_matrix = working_object@matrices@data,
+        train_matrix = full_object@matrices@ref,
         max_p_value = 0.01,
-        main_matrix = working_object@matrices@ref,
         verbose = verbose,
         numCores = num_cores
       )
-      k <- rank_result$rank
+      k <- rank_result
       report(sprintf("Optimal rank determined: %d", k))
     }
   } else {
@@ -150,6 +146,25 @@ select_optimal_parameters <- function(object,
     stringsAsFactors = FALSE
   )
   
+  if (nrow(param_grid) == 1) {
+    report("Single parameter set detected, running on full dataset directly")
+    best_params <- param_grid[1, ]
+    best_model <- RunCSFNMF(
+      train_object = full_object,
+      k = k,
+      init_method = best_params$init_method,
+      const.alpha = best_params$alpha,
+      const.beta = best_params$beta,
+      const.gamma = best_params$gamma,
+      const.delta = best_params$delta,
+      max.iter = 100,
+      verbose = verbose,
+      num_cores = num_cores,
+      whole_object = TRUE
+    )
+    return(list(best_params = c(k = k, best_params), best_model = best_model))
+  }
+  
   # Initialize results storage
   results <- data.frame(
     init_method = character(),
@@ -157,7 +172,7 @@ select_optimal_parameters <- function(object,
     beta = numeric(),
     gamma = numeric(),
     delta = numeric(),
-    accuracy = numeric(),
+    nmi = numeric(),
     loss = numeric(),
     convergence_iter = numeric(),
     stringsAsFactors = FALSE
@@ -167,7 +182,7 @@ select_optimal_parameters <- function(object,
   evaluate_params <- function(params) {
     tryCatch({
       model <- RunCSFNMF(
-        object = working_object,
+        train_object = working_object,
         k = k,
         init_method = params$init_method,
         const.alpha = params$alpha,
@@ -179,14 +194,13 @@ select_optimal_parameters <- function(object,
         num_cores = num_cores
       )
       
-      c(
-        accuracy = model@train_object@results$accuracy,
-        loss = tail(model@train_object@results$loss, 1),
-        convergence_iter = length(model@train_object@results$loss)
+      c(nmi = model@results$nmi,
+        loss = tail(model@results$loss, 1),
+        convergence_iter = length(model@results$loss)
       )
     }, error = function(e) {
       warning("Error with parameters: ", paste(params, collapse = ", "))
-      c(accuracy = NA, loss = NA, convergence_iter = NA)
+      c(nmi = NA, loss = NA, convergence_iter = NA)
     })
   }
   
@@ -213,30 +227,31 @@ select_optimal_parameters <- function(object,
     
     results <- rbind(results, data.frame(
       param_grid[i, ],
-      accuracy = mean_results["accuracy",],
+      nmi = mean_results["nmi",],
       loss = mean_results["loss",],
       convergence_iter = mean_results["convergence_iter",]
     ))
   }
   
   # Find best parameters
-  best_idx <- which.max(results$accuracy)
+  best_idx <- which.max(results$nmi)
   best_params <- param_grid[best_idx, ]
   
   # Run final model with best parameters on full dataset
   report("Training final model with best parameters on full dataset")
   best_model <- RunCSFNMF(
-      object = object,
-      k = k,
-      init_method = best_params$init_method,
-      const.alpha = best_params$alpha,
-      const.beta = best_params$beta,
-      const.gamma = best_params$gamma,
-      const.delta = best_params$delta,
-      max.iter = 100,
-      verbose = verbose,
-      num_cores = num_cores
-    )
+    train_object = full_object,
+    k = k,
+    init_method = best_params$init_method,
+    const.alpha = best_params$alpha,
+    const.beta = best_params$beta,
+    const.gamma = best_params$gamma,
+    const.delta = best_params$delta,
+    max.iter = 100,
+    verbose = verbose,
+    num_cores = num_cores,
+    whole_object = TRUE
+  )
   
   list(
     best_params = c(k = k, best_params),
@@ -273,19 +288,18 @@ create_data_subset <- function(object, subset_size) {
 
 #' Plot Parameter Search Results
 #'
-#' @param results Results from select_optimal_parameters
+#' @param results Results from CellMentor
 #' @return ggplot object with visualization of parameter search results
 #' @export
 plot_parameter_search <- function(results) {
-  # Create accuracy heatmap for each initialization method
   ggplot2::ggplot(results$results, 
-                  aes(x = factor(alpha), y = factor(beta), fill = accuracy)) +
+                  aes(x = factor(alpha), y = factor(beta), fill = nmi)) +
     geom_tile() +
     facet_wrap(~init_method) +
     scale_fill_viridis_c() +
     labs(title = "Parameter Search Results",
          x = "Alpha",
          y = "Beta",
-         fill = "Accuracy") +
+         fill = "Loss") +
     theme_minimal()
 }

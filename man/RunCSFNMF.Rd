@@ -5,7 +5,7 @@
 \title{Run Constrained Supervised Factorization NMF}
 \usage{
 RunCSFNMF(
-  object,
+  train_object,
   k = NULL,
   max_p_value = 0.01,
   max.iter = 100,
@@ -19,12 +19,10 @@ RunCSFNMF(
   verbose = TRUE,
   seed = 1,
   num_cores = 1,
-  chunk_size = NULL
+  whole_object = FALSE
 )
 }
 \arguments{
-\item{object}{CSFNMF object}
-
 \item{k}{Rank (number of factors). If NULL, estimated automatically}
 
 \item{max_p_value}{Maximum p-value for rank selection}
@@ -33,13 +31,13 @@ RunCSFNMF(
 
 \item{W0_H0}{Initial W and H matrices}
 
-\item{init_method}{Initialization method ("uniform", "regulated", "NNDSVD", "skmeanGenes", "skmeanCells")}
+\item{init_method}{Initialization method}
 
 \item{theta}{Convergence threshold}
 
 \item{const.alpha}{Alpha constraint parameter}
 
-\item{const.beta}{Beta constraint parameter (NULL for automatic)}
+\item{const.beta}{Beta constraint parameter}
 
 \item{const.gamma}{Gamma constraint parameter}
 
@@ -51,7 +49,7 @@ RunCSFNMF(
 
 \item{num_cores}{Number of cores for parallel processing}
 
-\item{chunk_size}{Size of chunks for processing (NULL for automatic)}
+\item{object}{CSFNMF object}
 }
 \value{
 Updated CSFNMF object

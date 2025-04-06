@@ -2,7 +2,7 @@
 % Please edit documentation in R/SelectRank.R
 \name{OptimalBeta}
 \alias{OptimalBeta}
-\title{Find Optimal Beta}
+\title{Optimized Optimal Beta Calculation}
 \usage{
 OptimalBeta(data, beta)
 }
@@ -15,6 +15,6 @@ OptimalBeta(data, beta)
 Difference statistic
 }
 \description{
-Find Optimal Beta
+Optimized Optimal Beta Calculation
 }
 \keyword{internal}

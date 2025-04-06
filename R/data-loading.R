@@ -13,8 +13,9 @@ load_pbmcsca_data <- function() {
   if (!requireNamespace("pbmcsca", quietly = TRUE)) {
     SeuratData::InstallData("pbmcsca")
   }
-  
+  library(pbmcsca.SeuratData)
   data("pbmcsca")
+  pbmcsca <- UpdateSeuratObject(pbmcsca)
   
   # Process data as before
   pbmcsca[["percent.mt"]] <- PercentageFeatureSet(pbmcsca, pattern = "^MT-")

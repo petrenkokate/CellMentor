@@ -2,11 +2,11 @@
 % Please edit documentation in R/SelectRank.R
 \name{calculate_significant_components}
 \alias{calculate_significant_components}
-\title{Calculate Significant Components}
+\title{Optimized Component Significance Calculation}
 \usage{
 calculate_significant_components(vectors, k, n.genes, max_p_value)
 }
 \description{
-Calculate Significant Components
+Optimized Component Significance Calculation
 }
 \keyword{internal}

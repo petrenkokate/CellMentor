@@ -23,6 +23,26 @@ standard_beta <- function(object, const = 1) {
   as(beta, "Matrix")
 }
 
+#' Calculate N Matrix
+#'
+#' @param celltype Cell type vector
+#' @return N matrix
+#' @importFrom Matrix Diagonal
+#' @keywords internal
+calculate_n_matrix <- function(celltype) {
+  # Calculate inverse counts
+  type_counts <- table(celltype)
+  cell_weights <- 1/type_counts[celltype]
+  
+  # Create diagonal matrix with proper names
+  N <- Matrix::Diagonal(x = as.numeric(cell_weights))
+  
+  # Set row and column names
+  colnames(N) <- rownames(N) <- names(celltype)
+  
+  as(N, "Matrix") 
+}
+
 #' Calculate Help Matrices
 #'
 #' @description
@@ -35,51 +55,67 @@ standard_beta <- function(object, const = 1) {
 calculate_help_matrices <- function(object) {
   # Get cell type counts and info
   celltype <- object@annotation$celltype
+  names(celltype) <- rownames(object@annotation)  # Make sure celltype has names
   counts <- table(celltype)
   num_clusters <- length(counts)
   k <- object@parameters$rank 
   
   # Calculate matrices
-  with_memory_check({
-    # Calculate A matrix
-    A <- calculate_a_matrix(counts)
-    
-    # Calculate B matrix
-    B <- calculate_b_matrix(counts)
-    
-    # Calculate P matrix
-    P <- calculate_p_matrix(num_clusters)
-    rownames(P) <- unique(celltype)
-    
-    # Calculate M matrix
-    M <- as(matrix(1, ncol = k, nrow = k) - 
-              diag(x = 1, nrow = k, ncol = k), 
-            "Matrix")
-    
-    # Calculate N matrix
-    N <- calculate_n_matrix(celltype)
-    
-    # Calculate BP and BP_posneg
-    BP <- B %*% P
-    BP_posneg <- calculate_bp_posneg(B, P)
-    
-    # Create help matrices object
-    const_matrices <- methods::new(
-      Class = "helpmat",
-      A = A,
-      B = B,
-      P = P,
-      M = M,
-      N = N,
-      BP = BP,
-      BP_posneg = BP_posneg,
-      Hconst = list()
-    )
-    
-    object@constants <- const_matrices
-  })
+
+  # Calculate A matrix
+  A <- calculate_a_matrix(counts)
+  # Ensure A has names
+  colnames(A) <- rownames(A) <- names(celltype)
   
-  object
+  # Calculate B matrix
+  B <- calculate_b_matrix(counts)
+  # Ensure B has proper row names
+  rownames(B) <- names(celltype)
+  colnames(B) <- names(counts)
+  
+  # Calculate P matrix
+  P <- calculate_p_matrix(num_clusters)
+  rownames(P) <- names(counts)
+  pair_names <- character(ncol(P))
+  col_idx <- 1
+  for (i in seq_len(num_clusters)) {
+    for (j in setdiff(seq_len(num_clusters), i)) {
+      pair_names[col_idx] <- sprintf("%s-%s", names(counts)[i], names(counts)[j])
+      col_idx <- col_idx + 1
+    }
+  }
+  colnames(P) <- pair_names
+  
+  # Calculate M matrix
+  M <- as(matrix(1, ncol = k, nrow = k) - 
+            diag(x = 1, nrow = k, ncol = k), 
+          "Matrix")
+  rownames(M) <- colnames(M) <- paste0("factor_", seq_len(k))
+  
+  # Calculate N matrix with names
+  N <- calculate_n_matrix(celltype)
+  
+  # Calculate BP and BP_posneg
+  BP <- B %*% P
+  rownames(BP) <- rownames(B)
+  colnames(BP) <- colnames(P)
+  
+  BP_posneg <- calculate_bp_posneg(B, P)
+  
+  # Create help matrices object
+  const_matrices <- methods::new(
+    Class = "helpmat",
+    A = A,
+    B = B,
+    P = P,
+    M = M,
+    N = N,
+    BP = BP,
+    BP_posneg = BP_posneg,
+    Hconst = list()
+  )
+  
+  const_matrices
 }
 
 #' Calculate A Matrix
@@ -153,21 +189,6 @@ calculate_p_matrix <- function(num_clusters) {
   }
   
   as(P, "Matrix")
-}
-
-#' Calculate N Matrix
-#'
-#' @param celltype Cell type vector
-#' @return N matrix
-#' @importFrom Matrix Diagonal
-#' @keywords internal
-calculate_n_matrix <- function(celltype) {
-  # Calculate inverse counts
-  type_counts <- table(celltype)
-  cell_weights <- 1/type_counts[celltype]
-  
-  # Create diagonal matrix
-  as(Matrix::Diagonal(x = as.numeric(cell_weights)), "Matrix") 
 }
 
 #' Calculate BP Positive/Negative Components
@@ -303,4 +324,124 @@ CSFnmfSingleR <- function(train_object, H_data = NULL, de.n = 50) {
     labels = train_object@annotation$celltype,
     de.n = de.n
   )
+}
+
+#' Calculate Normalized Mutual Information
+#'
+#' @param true_labels Vector of true labels
+#' @param pred_labels Vector of predicted labels
+#' @return NMI score between 0 and 1
+#' @importFrom entropy entropy.empirical mi.empirical
+#' @keywords internal
+calculate_nmi <- function(true_labels, pred_labels) {
+  
+  NMI(true_labels, pred_labels)
+  
+}
+
+#' Perform clustering on NMF factors
+#'
+#' @param h_matrix H matrix from NMF
+#' @param n_clusters Number of clusters to find
+#' @param method Clustering method ('kmeans', 'hclust', or 'leiden')
+#' @return Vector of cluster assignments
+#' @importFrom stats kmeans hclust cutree dist
+#' @keywords internal
+cluster_nmf <- function(h_matrix, n_clusters, method = "kmeans", resolution = 0.8) {
+  # Transpose to have cells as rows
+  data <- t(as.matrix(h_matrix))
+  
+  clusters <- switch(
+    method,
+    "kmeans" = {
+      set.seed(1)  # for reproducibility
+      km <- kmeans(data, centers = n_clusters)
+      km$cluster
+    },
+    "hclust" = {
+      hc <- hclust(dist(data))
+      cutree(hc, k = n_clusters)
+    },
+    "snn" = {
+      # Create Seurat object
+      seur_obj <- CreateSeuratObject(counts = t(data))
+      assay_v3 <- CreateAssayObject(
+        counts = seur_obj[["RNA"]]$counts
+      )
+      
+      seur_obj[["RNA"]] <- assay_v3
+      seur_obj <- FindVariableFeatures(seur_obj, selection.method = "vst", nfeatures = 2000, verbose = FALSE)
+      seur_obj <- FindNeighbors(seur_obj, dims = NULL, annoy.metric="cosine", verbose = FALSE)
+      seur_obj <- FindClusters(seur_obj, resolution = resolution, algorithm = 1, verbose = FALSE)
+      as.numeric(Idents(seur_obj))
+    },
+    stop("Unknown clustering method")
+  )
+  
+  clusters
+}
+
+#' Calculate Performance Metrics using Clustering
+#'
+#' @param train_object Training object
+#' @param h_project Projected H matrix
+#' @param seed Random seed
+#' @param return_pred Return prediction details
+#' @param method Clustering method to use
+#' @return List containing NMI score and optionally cluster assignments
+#' @importFrom aricode NMI
+#' @keywords internal
+calculate_performance <- function(train_object, h_project, 
+                                  seed = 1, return_pred = FALSE,
+                                  method = "snn") {
+  # Get number of true clusters
+  n_clusters <- length(unique(train_object@test_annotation$celltype))
+  
+  # Perform clustering
+  clusters <- cluster_nmf(h_project, n_clusters, method)
+  
+  # Get cell names in correct order
+  cell_names <- colnames(train_object@matrices@data)
+  
+  # Get true labels
+  true_labels <- train_object@test_annotation[cell_names, "celltype"]
+  
+  # Calculate NMI
+  nmi_score <- aricode::NMI(true_labels, clusters)
+  
+  if (return_pred) {
+    list(
+      nmi = nmi_score,
+      clusters = clusters,
+      true_labels = true_labels
+    )
+  } else {
+    nmi_score
+  }
+}
+
+#' Update Training Object Performance with Clustering Results
+#'
+#' @param train_object Training object
+#' @param h_project Projected H matrix 
+#' @param num_cores Number of cores for parallel processing
+#' @param method Clustering method to use
+#' @return Updated training object with performance metrics
+#' @keywords internal
+update_training_performance <- function(train_object, h_project, 
+                                        num_cores = 1, method = "kmeans") {
+  # Calculate performance with clustering
+  perf_result <- calculate_performance(
+    train_object, 
+    h_project, 
+    return_pred = TRUE,
+    method = method
+  )
+  
+  # Update training object results
+  train_object@results$nmi <- perf_result$nmi
+  train_object@results$clusters <- perf_result$clusters
+  train_object@results$true_labels <- perf_result$true_labels
+  
+  train_object
 }

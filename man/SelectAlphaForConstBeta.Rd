@@ -2,7 +2,7 @@
 % Please edit documentation in R/SelectRank.R
 \name{SelectAlphaForConstBeta}
 \alias{SelectAlphaForConstBeta}
-\title{Select Alpha for Constant Beta}
+\title{Optimized Alpha Selection for Constant Beta}
 \usage{
 SelectAlphaForConstBeta(Y, beta)
 }
@@ -15,6 +15,6 @@ SelectAlphaForConstBeta(Y, beta)
 List with alpha and scale matrix
 }
 \description{
-Select Alpha for Constant Beta
+Optimized Alpha Selection for Constant Beta
 }
 \keyword{internal}

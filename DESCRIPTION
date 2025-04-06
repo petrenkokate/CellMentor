@@ -41,7 +41,8 @@ Imports:
     ensembldb,
     AnnotationHub,
     GenomicRanges,
-    SingleCellExperiment
+    SingleCellExperiment,
+    entropy
 Suggests:
     testthat (>= 3.0.0),
     knitr,
