@@ -62,17 +62,8 @@ h_test <- project_data(
 )
 ```
 
-### 4. Perform Sub-clustering
 
-```R
-# Identify sub-clusters
-final_model <- SubClusCSFNMF(
-    final_model, 
-    resolution = 0.1
-)
-```
-
-### 5. Integration with Seurat
+### 4. Integration with Seurat
 
 ```R
 # Add CellMentor dimensionality reduction to Seurat object
@@ -82,4 +73,8 @@ seurat_object$CellMentor <- CreateDimReducObject(
     assay = DefaultAssay(seurat_object),
     loadings = as.matrix(final_model@W)
 )
+
+# Visualization
+seurat_object <- RunUMAP(seurat_object, reduction = 'CellMentor', dims= 1:optimal_params$best_params$k)
+DimPlot(seurat_object)
 ```
