@@ -42,7 +42,9 @@ Imports:
     AnnotationHub,
     GenomicRanges,
     SingleCellExperiment,
-    entropy
+    entropy,
+    irlba,
+    aricode
 Suggests:
     testthat (>= 3.0.0),
     knitr,
@@ -57,6 +59,8 @@ Remotes:
     bioc::ensembldb,
     bioc::AnnotationHub,
     bioc::GenomicRanges,
-    bioc::SingleCellExperiment
+    bioc::SingleCellExperiment,
+    bioc::SingleR,
+    bioc::scater
 LazyData: false
 VignetteBuilder: knitr
