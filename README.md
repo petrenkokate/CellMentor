@@ -139,6 +139,7 @@ The parameter selection process involves optimizing multiple hyperparameters to 
  - gamma_range: Controls sparsity of the factorization
  - delta_range: Controls orthogonality between factors
 
+this is parameter settings that work well across most datasets without extensive tuning.
 ```R
 # Find optimal parameters
 optimal_params <- CellMentor(
