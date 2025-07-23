@@ -285,7 +285,7 @@ initialize_cells_cluster <- function(data_matrix, k, labels){
   
   num_clus = k
   data_for_clus = data_matrix
-  data_for_clus = as.matrix(data_for_clus + eps) # KATE
+  data_for_clus = as.matrix(data_for_clus + eps) 
   skmeans_clus = skmeans::skmeans(t(data_for_clus), num_clus, method="pclust")
   cell_clusters = skmeans_clus[["cluster"]]
   centroids = matrix(0, nrow= k, ncol=nrow(data_matrix))
@@ -325,7 +325,7 @@ initialize_cells_cluster <- function(data_matrix, k, labels){
   }
   
   # Similarity <- function(cell, centroid) {lsa::cosine(cell, centroid)}
-  Similarity <- function(cell, centroid) { #KATE
+  Similarity <- function(cell, centroid) { 
     if (all(cell == 0) || all(centroid == 0)) {
       return(0)  # Return zero if either vector is all zeros
     }
