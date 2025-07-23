@@ -21,16 +21,16 @@
 #'          Default: c("regulated")
 #' @param alpha_range Vector of `alpha` values to test.
 #'          Controls within-class scatter (cell similarity within the same type).
-#'          Default: c(1, 5, 10)
+#'          Default: c(1, 5)
 #' @param beta_range Vector of `beta` values to test.
 #'          Controls between-class scatter (cell separation between different types).
-#'          Default: c(1, 5, 10)
+#'          Default: c(1, 5)
 #' @param gamma_range Vector of sparsity parameter values to test.
 #'          Controls sparsity of the factorization.
-#'          Default: c(0, 0.001, 0.1, 1)
+#'          Default: c(0.1)
 #' @param delta_range Vector of orthogonality parameter values to test.
 #'          Controls orthogonality between factors.
-#'          Default: c(0, 0.1, 1, 2.5)
+#'          Default: c(1)
 #' @param n_iter Number of repetitions per configuration for averaging results (default: 3).
 #' @param verbose Logical; whether to show progress messages during optimization.
 #'          Default: `TRUE`
@@ -96,10 +96,10 @@
 CellMentor <- function(object,
                                       k = NULL,
                                       init_methods = c("regulated"),
-                                      alpha_range = c(1, 5, 10),
-                                      beta_range = c(1, 5, 10),
-                                      gamma_range = c(0, 0.001, 0.1, 1),
-                                      delta_range = c(0, 0.1, 1, 2.5),
+                                       alpha_range = c(1, 5),  
+                                       beta_range = c(1, 5),     
+                                       gamma_range = c(0.1),     
+                                       delta_range = c(1),  
                                       n_iter = 1,
                                       verbose = TRUE,
                                       num_cores = 1,
