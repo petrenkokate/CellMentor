@@ -6,6 +6,7 @@
 #'   \item{data}{Expression matrix with genes as rows and cells as columns}
 #'   \item{celltypes}{Named vector of cell type annotations}
 #' @importFrom scRNAseq BaronPancreasData
+#' @importFrom SingleCellExperiment counts
 #' @export
 h.baron_dataset <- function() {
   # Load raw data
@@ -27,7 +28,7 @@ h.baron_dataset <- function() {
   }
   
   # Process expression data
-  baron.h.data <- as.matrix(counts(baron.h))
+  baron.h.data <- as.matrix(SingleCellExperiment::counts(baron.h))
   rownames(baron.h.data) <- gsub(".", "-", rownames(baron.h.data), fixed = TRUE)
   
   list(
