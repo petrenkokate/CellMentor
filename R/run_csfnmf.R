@@ -120,6 +120,11 @@ RunCSFNMF <- function(train_object,
     
     if (verbose) {
       message(sprintf("Final NMI: %.4f", perf_result$nmi))
+      
+      # Add warning if NMI < 0.2
+      if (!is.na(perf_result$nmi) && perf_result$nmi < 0.2) {
+        warning("⚠️ NMI is below 0.2, results may be unreliable. Please check reference/test configuration.")
+      }
     }
     # Add processing info
     attr(train_object, "processing_info") <- list(
