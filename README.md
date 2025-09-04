@@ -25,6 +25,7 @@ library(Matrix)
 library(ggplot2)
 library(dplyr)
 library(Seurat)
+library(scRNAseq)
 ```
 
 ## Basic Usage
