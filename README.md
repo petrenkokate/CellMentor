@@ -8,6 +8,22 @@ Features
 - Efficient projection of query datasets onto learned cell type spaces
 - Seamless integration with Seurat for visualization and downstream analysis
 
+# System Requirements
+## Hardware requirements
+- `CellMentor` package requires only a standard computer with enough RAM to support the in-memory operations.
+- R version (e.g., R ≥ 4.3).
+- Recommended RAM (e.g., ≥ 16 GB for medium datasets).
+- GPU is NOT required.
+
+## Software requirements
+### OS Requirements
+This package is supported for *macOS*, *Linux* and *Windows*. The package has been tested on the following systems:
++ macOS: Sequoia (15.6.1)
++ Linux: Ubuntu 20.04.6
+
+### R Dependencies
+`CellMentor` relies on several R packages, all of which are specified in the package DESCRIPTION file under the Imports field. These dependencies are installed automatically when you install CellMentor.
+
 ## Installation
 
 You can install CellMentor directly from GitHub using devtools:
@@ -15,6 +31,24 @@ You can install CellMentor directly from GitHub using devtools:
 ```R
 if (!require("devtools")) install.packages("devtools")
 devtools::install_github("petrenkokate/CellMentor", dependencies = TRUE)
+```
+
+
+### Typical Installation and Runtime
+
+- **Installation time:** ~5 minutes on a standard desktop computer  
+  (may vary depending on the number of dependencies to install).  
+
+- **Demo runtime:** ~8–10 minutes on a standard desktop computer  
+  (tested on macOS Sequoia 15.6.1 with R ≥ 4.3, 16 GB RAM).
+  
+
+## Basic Usage
+
+Set random seed for reproducibility
+
+```R
+set.seed(100)
 ```
 
 Load required packages
@@ -26,14 +60,6 @@ library(ggplot2)
 library(dplyr)
 library(Seurat)
 library(scRNAseq)
-```
-
-## Basic Usage
-
-Set random seed for reproducibility
-
-```R
-set.seed(100)
 ```
 
 ### 1. Load the datasets
@@ -108,7 +134,7 @@ csfnmf_obj <- CreateCSFNMFobject(
 )
 ```
 
-***Expected Output::***
+***Expected Output:***
 ```
 [11:45:56] Starting CSFNMF object creation
 [11:45:59] Validating inputs
@@ -140,7 +166,8 @@ The parameter selection process involves optimizing multiple hyperparameters to 
  - gamma_range: Controls sparsity of the factorization
  - delta_range: Controls orthogonality between factors
 
-this is parameter settings that work well across most datasets without extensive tuning.
+These are parameter settings that work well across most datasets without extensive tuning.
+
 ```R
 # Find optimal parameters
 optimal_params <- CellMentor(
@@ -234,3 +261,63 @@ seu_muraro$CellMentor <- CreateDimReducObject(
 seu_muraro <- RunUMAP(seu_muraro, reduction = 'CellMentor', dims= 1:K_VALUE)
 DimPlot(seu_muraro, group.by = 'celltype')
 ```
+
+# Run CellMentor on Your Own Data
+
+This quick guide shows how to create a **CSFNMF** object from your data. After creating the object, **follow the same steps as in the demo** (parameter search with `CellMentor()`, projection with `project_data()`, optional Seurat integration).
+
+## Inputs
+- **Reference counts matrix**: genes × cells (`ref_counts`)
+- **Reference annotations**: vector of length `ncol(ref_counts)` (`ref_celltypes`), names must match `colnames(ref_counts)`
+- **Query counts matrix**: genes × cells (`qry_counts`), with overlapping gene IDs
+
+> Tip: rows = genes, columns = cells. Use sparse matrices (`Matrix::dgCMatrix`) for speed/memory.
+
+## Create the object
+
+```r
+library(Matrix)
+library(CellMentor)
+
+# 1) Build CSFNMF object
+csfnmf_obj <- CreateCSFNMFobject(
+  ref_matrix    = ref_counts,
+  ref_celltype  = ref_celltypes,   # names(ref_celltypes) == colnames(ref_counts)
+  data_matrix   = qry_counts,
+  norm          = TRUE,
+  most.variable = TRUE,
+  scale         = TRUE,
+  scale_by      = "cells",
+  num_cores     = 1,
+  verbose       = TRUE
+)
+```
+
+## Next steps
+Proceed exactly as in the **Demo** section:
+1. **Hyperparameter search & training:** `optimal <- CellMentor(csfnmf_obj, ...)`  
+2. **Best model:** `best_model <- optimal$best_model`  
+3. **Projection:** `h_project <- project_data(W = best_model@W, X = best_model@matrices@data)`  
+4. *(Optional)* **Seurat integration & UMAP:** same code as in the demo.
+
+# Reproduce the analysis and figures from the paper
+
+All scripts used to generate the analyses and figures reported in the manuscript are openly available at [petrenkokate/CellMentor_paper](https://github.com/petrenkokate/CellMentor_paper).
+The repository contains:
+- Code for data preprocessing, model training, and evaluation
+- Scripts to reproduce each figure in the paper
+
+# Citation
+
+If you use *CellMentor* in your work, please cite:
+
+CellMentor: Cell-Type Aware Dimensionality Reduction for Single-cell RNA-Sequencing Data  
+Or Hevdeli†, Ekaterina Petrenko†, Dvir Aran  
+*bioRxiv* 2025.06.17.660094  
+doi: [https://doi.org/10.1101/2025.06.17.660094](https://doi.org/10.1101/2025.06.17.660094)  
+
+† These authors contributed equally to this work.
+
+# License
+
+This project is covered under the **Apache 2.0 License**.
