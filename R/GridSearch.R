@@ -1,13 +1,18 @@
 #' Select Optimal Hyperparameters for CSFNMF
 #'
 #' @description
-#' Tests different combinations of hyperparameters using `RunCSFNMF` to find the optimal configuration.
-#' The function performs a grid search over specified parameter ranges, evaluating the model's 
-#' performance for each combination. Parameters `alpha` and `beta` are kept equal during optimization.
-#' The rank (`k`) can be provided, taken from an existing object, or determined automatically using
+#' Tests different combinations of hyperparameters using `RunCSFNMF` 
+#' to find the optimal configuration.
+#' The function performs a grid search over specified parameter ranges,
+#'  evaluating the model's 
+#' performance for each combination. Parameters `alpha` and `beta` are 
+#' kept equal during optimization.
+#' The rank (`k`) can be provided, taken from an existing object, or 
+#' determined automatically using
 #' `SelectRank`.
 #'
-#' @param object CSFNMF object containing reference and query data matrices, with required matrices 
+#' @param object CSFNMF object containing reference and query data matrices, 
+#'               with required matrices 
 #'               for `data` and `ref` under `object@matrices`.
 #' @param k Optional rank value (number of factors). If `NULL`:
 #'          - Uses existing rank from `object` if available
@@ -20,10 +25,12 @@
 #'          - "skmeanCells": Cell clustering-based
 #'          Default: c("regulated")
 #' @param alpha_range Vector of `alpha` values to test.
-#'          Controls within-class scatter (cell similarity within the same type).
+#'          Controls within-class scatter (cell similarity within 
+#'          the same type).
 #'          Default: c(0.1, 0.5, 1)
 #' @param beta_range Vector of `beta` values to test.
-#'          Controls between-class scatter (cell separation between different types).
+#'          Controls between-class scatter (cell separation between 
+#'          different types).
 #'          Default: c(1, 2, 5)
 #' @param gamma_range Vector of sparsity parameter values to test.
 #'          Controls sparsity of the factorization.
@@ -31,18 +38,15 @@
 #' @param delta_range Vector of orthogonality parameter values to test.
 #'          Controls orthogonality between factors.
 #'          Default: c(0, 0.5)
-#' @param n_iter Number of repetitions per configuration for averaging results (default: 3).
-#' @param verbose Logical; whether to show progress messages during optimization.
+#' @param n_iter Number of repetitions per configuration for averaging 
+#'          results (default: 3).
+#' @param verbose Logical; whether to show progress messages during 
+#'          optimization.
 #'          Default: `TRUE`
 #' @param num_cores Number of cores to use for parallel processing.
 #'          If > 1, parameter combinations are tested in parallel.
 #'          Default: 1
-#' @param subset_size Optional integer specifying the number of cells to use in a subset for faster
-#'          parameter optimization. When provided, a random subset of cells is selected from the data
-#'          and used to test different parameter configurations. This can reduce computation time,
-#'          but the best parameters found may vary slightly from those found with the full dataset.
-#'          After selecting the optimal parameters, the function runs the final model on the full
-#'          dataset. Default: `NULL` (uses full dataset).
+#' @param seed Random seed
 #'
 #' @return List containing:
 #'         - `best_params`: List with the overall best parameter configuration:
@@ -63,47 +67,42 @@
 #'           * `accuracy`: Achieved accuracy
 #'           * `loss`: Final loss value
 #'           * `convergence_iter`: Number of iterations for convergence
-#'         - `best_model`: CSFNMF model object trained with the best parameters.
+#'         - `best_model`:CSFNMF model object trained with the best parameters.
 #'
 #' @examples
-#' # Basic usage with default parameter ranges
-#' optimal_params <- CellMentor(object)
-#'
-#' # Custom parameter ranges with parallel processing
-#' optimal_params <- CellMentor(
-#'   object,
-#'   k = 50,
-#'   init_methods = c("NNDSVD"),
-#'   alpha_range = c(1, 2, 3),
-#'   beta_range = c(1, 2, 5),
-#'   gamma_range = c(0, 0.1, 0.2),
-#'   delta_range = c(0, 1),
-#'   num_cores = 4
+#' data(obj_toy, package = "CellMentor")
+#' # Run lightweight CellMentor
+#' result <- CellMentor(
+#'   object        = obj_toy,
+#'   k             = 2,
+#'   init_methods  = "regulated",
+#'   alpha_range   = 1,
+#'   beta_range    = 1,
+#'   gamma_range   = 0.1,
+#'   delta_range   = 1,
+#'   n_iter        = 1,
+#'   verbose       = FALSE,
+#'   num_cores     = 1
 #' )
 #'
-#' # Access best overall parameters
-#' print(optimal_params$best_params)
-#'
-#' # Compare results across methods
-#' lapply(optimal_params$results, function(x) x$best_params)
-#'
-#' @seealso
-#' \code{\link{RunCSFNMF}} for the main model fitting function
-#' \code{\link{SelectRank}} for automatic rank selection
-#' \code{\link{plot_parameter_search}} for results visualization
-#' 
+#' # Inspect results (should run in <10 seconds)
+#' names(result)
+#' if ("best_params" %in% names(result)) {
+#'   print(result$best_params)
+#' }
+#' @importFrom utils tail
 #' @export
 CellMentor <- function(object,
-                                      k = NULL,
-                                      init_methods = c("regulated"),
-                                       alpha_range = c(1, 5),  
-                                       beta_range = c(1, 5),     
-                                       gamma_range = c(0.1),     
-                                       delta_range = c(1),  
-                                      n_iter = 1,
-                                      verbose = TRUE,
-                                      num_cores = 1,
-                                      seed = 1) {
+                        k = NULL,
+                        init_methods = c("regulated"),
+                        alpha_range = c(1, 5),  
+                        beta_range = c(1, 5),     
+                        gamma_range = c(0.1),     
+                        delta_range = c(1),  
+                        n_iter = 1,
+                        verbose = TRUE,
+                        num_cores = 1,
+                        seed = 1) {
   
   # Create reporter for progress messages
   report <- create_reporter(verbose)
@@ -117,7 +116,8 @@ CellMentor <- function(object,
   
   # Determine k value
   if (is.null(k)) {
-    if (!is.null(object@train_object) && !is.null(object@train_object@parameters$rank) &&
+    if (!is.null(object@train_object) && 
+        !is.null(object@train_object@parameters$rank) &&
         object@train_object@parameters$rank > 0) {
       k <- object@train_object@parameters$rank
       report(sprintf("Using existing rank: %d", k))
@@ -211,12 +211,12 @@ CellMentor <- function(object,
   for (i in seq_len(total_configs)) {
     if (verbose) {
       report(sprintf("Testing configuration %d/%d", i, total_configs))
-      print(param_grid[i, ])
+      message(param_grid[i, ])
     }
     
     iter_results <- replicate(n_iter, {
       res <- evaluate_params(param_grid[i, ])
-      res[1:3]
+      res[seq_len(3)]
     }, simplify = TRUE)
     
     if (n_iter == 1) {
@@ -261,8 +261,10 @@ CellMentor <- function(object,
 }
 
 #' Helper function to create data subset
-#' 
-#' @export
+#' @param object CSFNMF object
+#' @param subset_size Proportion of cells to include in subset
+#' @return data subset
+#' @noRd
 create_data_subset <- function(object, subset_size) {
   # Calculate number of cells to sample
   n_ref_cells <- ncol(object@matrices@ref)
@@ -284,22 +286,4 @@ create_data_subset <- function(object, subset_size) {
   new_object@annotation <- object@annotation[ref_cells, , drop = FALSE]
   
   new_object
-}
-
-#' Plot Parameter Search Results
-#'
-#' @param results Results from CellMentor
-#' @return ggplot object with visualization of parameter search results
-#' @export
-plot_parameter_search <- function(results) {
-  ggplot2::ggplot(results$results, 
-                  aes(x = factor(alpha), y = factor(beta), fill = nmi)) +
-    geom_tile() +
-    facet_wrap(~init_method) +
-    scale_fill_viridis_c() +
-    labs(title = "Parameter Search Results",
-         x = "Alpha",
-         y = "Beta",
-         fill = "Loss") +
-    theme_minimal()
 }

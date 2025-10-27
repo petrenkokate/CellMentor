@@ -30,36 +30,29 @@ CreateCSFNMFobject(
 
 \item{scale}{Logical: perform scaling (default: TRUE)}
 
-\item{scale_by}{Character: scaling method, either "cells" or "genes" (default: "cells")}
+\item{scale_by}{Character: scaling method, either "cells" or "genes"
+(default: "cells")}
 
 \item{gene_list}{Optional vector of genes to include (default: NULL)}
 
 \item{verbose}{Logical: show progress messages (default: TRUE)}
 
-\item{num_cores}{Integer: number of cores for parallel processing (default: 1)}
+\item{num_cores}{Integer: number of cores for parallel processing
+(default: 1)}
 }
 \value{
 A CSFNMF object containing processed data and annotations
 }
 \description{
-Creates and initializes a Constrained Supervised Factorization NMF (CSFNMF) object
+Creates and initializes a Constrained Supervised Factorization NMF
+(CSFNMF) object
 for analyzing single-cell RNA sequencing data. This is the main function for
 starting analysis with CellMentor.
 }
 \examples{
-# Create CSFNMF object with default parameters
-object <- CreateCSFNMFobject(
-  ref_matrix = reference_data,
-  ref_celltype = cell_types,
-  data_matrix = query_data
-)
-
-# Create object with custom parameters
-object <- CreateCSFNMFobject(
-  ref_matrix = reference_data,
-  ref_celltype = cell_types,
-  data_matrix = query_data,
-  scale_by = "genes",
-  num_cores = 4
-)
+data(ref_matrix_toy, qry_matrix_toy, ref_celltype_toy, package = "CellMentor")
+obj <- CreateCSFNMFobject(ref_matrix_toy, ref_celltype_toy, qry_matrix_toy,
+                          norm = FALSE, most.variable = FALSE, scale = FALSE,
+                          verbose = FALSE, num_cores = 1)
+inherits(obj, "csfnmf")
 }

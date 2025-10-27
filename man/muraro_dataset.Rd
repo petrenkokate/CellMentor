@@ -14,3 +14,19 @@ A list containing:
 \description{
 Loads and processes the Muraro et al. pancreas single-cell RNA-seq dataset
 }
+\examples{
+
+# Load Muraro pancreas dataset
+muraro <- muraro_dataset()
+
+# Check dataset dimensions
+dim(muraro$data)
+
+# View available cell types
+table(muraro$celltypes)
+
+# Check number of cells per type
+sort(table(muraro$celltypes), decreasing = TRUE)
+
+
+}

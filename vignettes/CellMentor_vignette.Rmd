@@ -1,0 +1,284 @@
+---
+title: "Introduction to CellMentor"
+author:
+  - name: "Ekaterina Petrenko"
+    affiliation: "Technion – Israel Institute of Technology, Haifa, Israel"
+    email: "petrenko.kate@icloud.com"
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Introduction to CellMentor}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+<p>
+**R version**: `r R.version.string`
+<br />
+**Bioconductor version**: `r BiocManager::version()`
+<br />
+**Package version**: `r packageVersion("CellMentor")`
+</p>
+
+# Introduction
+
+CellMentor is a novel supervised cell type aware non-negative matrix factorization (NMF) method designed for enhanced cell type resolution in single-cell RNA sequencing analysis. By integrating cell type annotations into the NMF framework, CellMentor enables improved cell type separation, clustering, and annotation by leveraging latent patterns from reference datasets.
+
+Traditional dimensionality reduction methods for single-cell RNA sequencing data often fail to capture cell type-specific variation effectively. CellMentor addresses this limitation by incorporating supervised learning into the NMF framework, resulting in improved separation of cell types in the reduced dimensional space. This approach is particularly valuable when working with heterogeneous cell populations where subtle differences between cell types need to be preserved during dimensionality reduction.
+
+## Key Features
+
+- **Improved cell type separation** through constrained supervised factorization (CSFNMF)
+- **Automated parameter optimization** for optimal performance
+- **Efficient projection** of query datasets onto learned cell type spaces
+- **Seamless integration** with Seurat for visualization and downstream analysis
+
+## Comparison to Existing Methods
+
+CellMentor distinguishes itself from other dimensionality reduction methods in the Bioconductor ecosystem by:
+
+- Incorporating cell type annotations directly into the factorization process, unlike unsupervised methods such as PCA or standard NMF
+- Providing interpretable gene loadings that reflect cell type-specific expression patterns
+- Enabling transfer learning from reference to query datasets while maintaining cell type resolution
+
+# Installation
+
+To install CellMentor from Bioconductor:
+
+```{r installation, eval=FALSE}
+if (!require("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install("CellMentor")
+```
+
+# Basic Usage
+
+This section demonstrates the core functionality of CellMentor using a practical example with pancreatic cell data.
+
+## Load Required Packages
+
+```{r load_packages}
+set.seed(100)
+
+library(CellMentor)
+library(Matrix)
+library(ggplot2)
+library(Seurat)
+library(scRNAseq)
+```
+
+## 1. Load Example Data
+
+We'll use the Baron pancreas dataset as our reference and the Muraro pancreas dataset as our query data:
+
+```{r load_data}
+# Loading reference dataset (Baron)
+baron <- h.baron_dataset()
+reference_matrix <- baron$data
+reference_celltypes <- baron$celltypes
+
+# Loading query dataset (Muraro)
+muraro <- muraro_dataset()
+query_matrix <- muraro$data
+query_celltypes <- muraro$celltypes # This would be unknown in a real application
+# We keep it here for evaluation
+```
+
+# (Optional) Create smaller subsets for faster demonstration
+
+```{r}
+# Function to create balanced subsets
+create_subset <- function(matrix, celltypes, cells_per_type = 30) {
+  # Get unique cell types
+  unique_types <- unique(celltypes)
+
+  # Select cells for each type
+  selected_cells <- c()
+  for (cell_type in unique_types) {
+    # Get cells of this type
+    type_cells <- names(celltypes)[celltypes == cell_type]
+
+    # If fewer cells than requested, take all of them
+    n_to_select <- min(cells_per_type, length(type_cells))
+
+    # Randomly select cells
+    selected <- sample(type_cells, n_to_select)
+    selected_cells <- c(selected_cells, selected)
+  }
+
+  # Return subset
+  list(
+    matrix = matrix[, selected_cells],
+    celltypes = celltypes[selected_cells]
+  )
+}
+
+# Create balanced subsets with 30 cells per type
+baron_subset <- create_subset(reference_matrix, reference_celltypes, 30)
+muraro_subset <- create_subset(query_matrix, query_celltypes, 30)
+
+# Update variable names for clarity
+reference_matrix <- baron_subset$matrix
+reference_celltypes <- baron_subset$celltypes
+query_matrix <- muraro_subset$matrix
+query_celltypes <- muraro_subset$celltypes # This would be unknown in a real application
+# We keep it here for evaluation
+```
+
+## 2. Create CSFNMF Object
+
+The CSFNMF object is the core data structure that holds both reference and query data:
+
+```{r create_object}
+# Create the CSFNMF object
+csfnmf_obj <- CreateCSFNMFobject(
+  ref_matrix = reference_matrix,
+  ref_celltype = reference_celltypes,
+  data_matrix = query_matrix,
+  norm = TRUE,
+  most.variable = TRUE,
+  scale = TRUE,
+  scale_by = "cells",
+  verbose = TRUE,
+  num_cores = 1
+)
+```
+
+## 3. Run CellMentor with Hyperparameter Optimization
+
+CellMentor automatically searches for optimal hyperparameters:
+
+```{r run_cellmentor}
+# Run CellMentor with hyperparameter optimization
+optimal_params <- CellMentor(
+  csfnmf_obj,
+  alpha_range = c(1, 5), # Limited alpha range
+  beta_range = c(5), # use only one beta for speed
+  gamma_range = c(0.1), # use only one gamma for speed
+  delta_range = c(1), # use only one delta for speed
+  num_cores = 1,
+  verbose = TRUE
+)
+
+# Get best model
+best_model <- optimal_params$best_model
+K_VALUE <- cm_rank(best_model)
+```
+
+## 4. Project Data
+
+Project the query data onto the learned space:
+
+```{r project_data}
+# Project query data onto the learned space
+h_project <- project_data(
+  W = W(best_model), # Learned gene weights
+  X = data_matrix(matrices(best_model)), # Query data matrix
+  num_cores = 5,
+  verbose = TRUE
+)
+```
+
+## 5. Integration with Seurat
+
+Integrate the CellMentor results with Seurat for visualization:
+
+```{r seurat_integration}
+# Create Seurat object
+rownames(query_matrix) <- make.unique(rownames(query_matrix))
+seu_muraro <- CreateSeuratObject(counts = query_matrix)
+seu_muraro$celltype <- query_celltypes
+
+# Add CellMentor dimensionality reduction to Seurat object
+seu_muraro$CellMentor <- CreateDimReducObject(
+  embeddings = t(as.matrix(h_project)),
+  key = "CellMentor_",
+  assay = DefaultAssay(seu_muraro),
+  loadings = as.matrix(W(best_model))
+)
+
+# Run UMAP on CellMentor dimensions
+seu_muraro <- RunUMAP(seu_muraro, reduction = "CellMentor", dims = 1:K_VALUE)
+
+# Visualize
+DimPlot(seu_muraro, group.by = "celltype")
+```
+
+# Running CellMentor on Your Own Data
+
+This section provides guidance for applying CellMentor to your own datasets.
+
+## Required Inputs
+
+To use CellMentor, you need:
+
+- **Reference counts matrix**: genes × cells (`ref_counts`)
+- **Reference annotations**: vector of length `ncol(ref_counts)` (`ref_celltypes`), names must match `colnames(ref_counts)`
+- **Query counts matrix**: genes × cells (`qry_counts`), with overlapping gene IDs
+
+**Tip**: Rows should be genes, columns should be cells. Use sparse matrices (`Matrix::dgCMatrix`) for improved speed and memory efficiency.
+
+## Workflow
+
+```{r custom_data_workflow, eval=FALSE}
+library(Matrix)
+library(CellMentor)
+
+# 1) Build CSFNMF object
+csfnmf_obj <- CreateCSFNMFobject(
+  ref_matrix = ref_counts,
+  ref_celltype = ref_celltypes, # names(ref_celltypes) == colnames(ref_counts)
+  data_matrix = qry_counts,
+  norm = TRUE,
+  most.variable = TRUE,
+  scale = TRUE,
+  scale_by = "cells",
+  num_cores = 1,
+  verbose = TRUE
+)
+
+# 2) Hyperparameter search & training
+optimal <- CellMentor(csfnmf_obj)
+
+# 3) Get best model
+best_model <- optimal$best_model
+
+# 4) Project data
+h_project <- project_data(
+  W = W(best_model),
+  X = data_matrix(matrices(best_model))
+)
+
+# 5) Optional: Seurat integration & UMAP
+# (Follow the same steps as in the demo section above)
+```
+
+# Session Information
+
+```{r session_info}
+sessionInfo()
+```
+
+# References
+
+CellMentor: Cell-Type Aware Dimensionality Reduction for Single-cell RNA-Sequencing Data  
+Or Hevdeli†, Ekaterina Petrenko†, Dvir Aran  
+*bioRxiv* 2025.06.17.660094  
+doi: [https://doi.org/10.1101/2025.06.17.660094](https://doi.org/10.1101/2025.06.17.660094)  
+
+† These authors contributed equally to this work.

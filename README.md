@@ -26,6 +26,16 @@ This package is supported for *macOS*, *Linux* and *Windows*. The package has be
 
 ## Installation
 
+You can install CellMentor from BioConductor:
+
+```R
+if (!require("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install("CellMentor")
+```
+
 You can install CellMentor directly from GitHub using devtools:
 
 ```R

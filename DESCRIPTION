@@ -1,34 +1,37 @@
 Package: CellMentor
 Type: Package
 Title: Supervised Non-negative Matrix Factorization for Dimensional Reduction in Single-Cell Analysis
-Version: 0.1.0
-Authors@R: person("Ekaterina", "Petrenko", email = "petrenko.kate@icloud.com", role = c("aut", "cre"))
-Description: A package implementing supervised cell type aware non-negative matrix factorization (NMF) 
-    for dimensional reduction in single-cell RNA sequencing analysis.
-License: MIT + file LICENSE
+Version: 0.99.0
+Authors@R: person("Ekaterina", "Petrenko", 
+    email = "petrenko.kate@icloud.com", 
+    role = c("aut", "cre"),
+    comment = c(ORCID = "0000-0003-3549-834X"))
+Description: Implements supervised cell type-aware non-negative matrix factorization (NMF) for dimensional
+             reduction in single-cell RNA sequencing analysis. The package provides methods for incorporating
+             cell type information into the dimensionality reduction process, enabling improved visualization 
+             and downstream analysis of single-cell data while preserving biological structure. CellMentor 
+             employs a unique loss function that simultaneously minimizes variation within known cell 
+             populations while maximizing distinctions between different cell types, enabling effective transfer
+             of learned patterns from labeled reference datasets to new unlabeled data.
+License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
-biocViews:
-    SingleCell,
-    GeneExpression,
-    Transcriptomics
+Depends: 
+    R (>= 4.3.0)
 Imports:
     methods,
     Matrix,
     SingleR,
     Seurat (>= 4.0.0),
-    stringr,
-    scater,
-    plyr,
     utils,
-    rprojroot,
     stats,
     parallel,
     progress,
     ggplot2,
     data.table,
     magrittr,
+    graphics,
     RMTstat,
     sparsesvd,
     cluster,
@@ -38,29 +41,24 @@ Imports:
     lsa,
     nnls,
     scRNAseq,
-    ensembldb,
-    AnnotationHub,
-    GenomicRanges,
     SingleCellExperiment,
     entropy,
     irlba,
     aricode
 Suggests:
     testthat (>= 3.0.0),
-    knitr,
+    covr,
+    withr,
     rmarkdown,
-    SeuratData
-Config/testthat/edition: 3
-Depends: 
-    R (>= 4.0)
-Remotes:
-    satijalab/seurat-data,
-    bioc::scRNAseq,
-    bioc::ensembldb,
-    bioc::AnnotationHub,
-    bioc::GenomicRanges,
-    bioc::SingleCellExperiment,
-    bioc::SingleR,
-    bioc::scater
-LazyData: false
+    knitr,
+    BiocStyle
 VignetteBuilder: knitr
+biocViews: 
+    Software,
+    SingleCell,
+    GeneExpression,
+    Transcriptomics,
+    DimensionReduction
+URL: https://github.com/petrenkokate/CellMentor
+BugReports: https://github.com/petrenkokate/CellMentor/issues
+Config/testthat/edition: 3

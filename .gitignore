@@ -1,0 +1,53 @@
+.RData
+.Ruserdata
+inst/doc
+*.Rcheck/
+*.tar.gz
+*.Rproj
+.vscode/
+
+# R hidden and system files
+.Renviron
+.Rprofile
+.Rproj
+.Rproj.user/
+.Rhistory
+.Rapp.history
+
+# Compiled and temporary objects
+*.o
+*.so
+*.dll
+*.dylib
+*.a
+*.def
+*.sl
+
+# OS and IDE metadata
+.DS_Store
+.directory
+.dropbox
+.project
+.settings/
+.tm_properties
+.exrc
+.gdb.history
+.gitattributes
+.gitmodules
+.hgtags
+.seed
+.cproject
+.unsrturl.bst
+.log
+.aux
+.backups
+
+# Other transient files
+*.bak
+*.swp
+*.tmp
+
+# NEWS and build artefacts
+CellMentor_*.tar.gz
+CellMentor.Rcheck/
+.Rbuildignore

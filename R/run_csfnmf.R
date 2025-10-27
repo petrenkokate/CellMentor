@@ -1,9 +1,10 @@
 #' Run Constrained Supervised Factorization NMF
 #'
-#' @description
-#' Performs constrained supervised factorization NMF analysis on the provided data
+#' Performs constrained supervised factorization NMF analysis on the 
+#' provided data
 #'
-#' @param object CSFNMF object
+#' @param train_object Training CSFNMF object (not 'object')
+#' @param whole_object Logical; whether to use the whole object for training
 #' @param k Rank (number of factors). If NULL, estimated automatically
 #' @param max_p_value Maximum p-value for rank selection
 #' @param max.iter Maximum number of iterations
@@ -19,26 +20,28 @@
 #' @param num_cores Number of cores for parallel processing
 #'
 #' @return Updated CSFNMF object
-#' @export
-RunCSFNMF <- function(train_object,
-                      k = NULL,
-                      max_p_value = 0.01,
-                      max.iter = 100,
-                      W0_H0 = NULL,
-                      init_method = "NNDSVD",
-                      theta = 1.0e-8,
-                      const.alpha = 1,
-                      const.beta = NULL,
-                      const.gamma = 1,
-                      const.delta = 1,
-                      verbose = TRUE,
-                      seed = 1,
-                      num_cores = 1,
-                      whole_object = FALSE) {
-  
+#' @noRd
+#' @importFrom utils tail
+RunCSFNMF <- function(
+  train_object,
+  k = NULL,
+  max_p_value = 0.01,
+  max.iter = 100,
+  W0_H0 = NULL,
+  init_method = "NNDSVD",
+  theta = 1e-08,
+  const.alpha = 1,
+  const.beta = NULL,
+  const.gamma = 1,
+  const.delta = 1,
+  verbose = TRUE,
+  seed = 1,
+  num_cores = 1,
+  whole_object = FALSE
+) {
   report <- create_reporter(verbose)
-  
-  
+
+
   # Initialize parameters
   parameters <- list(
     rank = k,
@@ -62,21 +65,21 @@ RunCSFNMF <- function(train_object,
     report("Initializing W and H matrices")
     W0_H0 <- initialize_wh(train_object, init_method)
   }
-  
+
   # Set matrices
   train_object@W <- W0_H0$W
   train_object@H <- W0_H0$H
-  
+
   # Set beta constraint
   if (is.null(const.beta)) {
     parameters$beta <- standard_beta(train_object)
   } else if (is.numeric(const.beta)) {
     parameters$beta <- standard_beta(train_object, const.beta)
   }
-  
+
   report("Calculating helper matrices")
   train_object@constants <- calculate_help_matrices(train_object)
-  
+
   # Calculate alpha
   report("Calculating alpha")
   real_alpha <- const.alpha
@@ -85,22 +88,22 @@ RunCSFNMF <- function(train_object,
     train_object@constants@N <- const.alpha * train_object@constants@N
     parameters$alpha <- 1
   }
-  
+
   # Set parameters
   train_object@parameters <- parameters
-  
+
   # Calculate constants for H
   report("Calculating H constants")
   train_object@constants@Hconst <- calculate_const_for_h(train_object)
-  
+
   # Update W and H
   report("Updating W and H matrices")
   train_object <- update_wh(train_object, theta, verbose)
-  
+
   # Restore original parameters
   parameters$alpha <- real_alpha
   train_object@constants@N <- real_N
-  
+
   if (!whole_object) {
     # Project data and calculate performance
     report("Calculating projections and performance metrics")
@@ -111,19 +114,21 @@ RunCSFNMF <- function(train_object,
       num_cores = num_cores,
       verbose = verbose
     )
-    
+
     # Calculate NMI
     report("Calculating NMI")
-    perf_result <- calculate_performance(train_object, h_project, return_pred = TRUE)
+    perf_result <- calculate_performance(train_object, h_project, 
+                                         return_pred = TRUE)
     train_object@results$nmi <- perf_result$nmi
     train_object@results$predictions <- perf_result$SingleRpred
-    
+
     if (verbose) {
       message(sprintf("Final NMI: %.4f", perf_result$nmi))
-      
+
       # Add warning if NMI < 0.2
       if (!is.na(perf_result$nmi) && perf_result$nmi < 0.2) {
-        warning("⚠️ NMI is below 0.2, results may be unreliable. Please check reference/test configuration.")
+        warning("NMI is below 0.2, results may be unreliable. 
+                Please check reference/test configuration.")
       }
     }
     # Add processing info
@@ -134,10 +139,7 @@ RunCSFNMF <- function(train_object,
       final_nmi = perf_result$nmi,
       projection_info = attr(h_project, "processing_info")
     )
-    
-  }
-  
-  else {
+  } else {
     # Add processing info
     attr(train_object, "processing_info") <- list(
       num_cores_used = num_cores,
@@ -145,7 +147,7 @@ RunCSFNMF <- function(train_object,
       final_loss = tail(train_object@results$loss, 1)
     )
   }
-  
+
   train_object
 }
 
@@ -155,17 +157,18 @@ RunCSFNMF <- function(train_object,
 #' @param available_memory Available memory in MB
 #' @return Optimal chunk size
 #' @keywords internal
+#' @noRd
 determine_chunk_size <- function(n_cells, available_memory = 1000) {
   # Estimate memory per cell (adjust based on your data)
-  mem_per_cell <- 0.1  # MB
-  
+  mem_per_cell <- 0.1 # MB
+
   # Calculate optimal chunk size
   chunk_size <- min(
     floor(available_memory / mem_per_cell),
     n_cells,
-    1000  # Maximum chunk size
+    1000 # Maximum chunk size
   )
-  
+
   # Ensure minimum size
   max(chunk_size, 100)
 }
@@ -175,6 +178,7 @@ determine_chunk_size <- function(n_cells, available_memory = 1000) {
 #' @param mat Input matrix
 #' @return Matrix in dgCMatrix format
 #' @keywords internal
+#' @noRd
 ensure_dgCMatrix <- function(mat) {
   if (!inherits(mat, "dgCMatrix")) {
     return(as(as(mat, "CsparseMatrix"), "dgCMatrix"))

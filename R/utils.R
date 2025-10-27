@@ -1,9 +1,20 @@
 #' Null coalescing operator
 #'
+#' Returns `x` if not `NULL`; otherwise `y`.
+#'
 #' @param x First value
 #' @param y Default value
 #' @return x if not NULL, otherwise y
-#' @keywords internal
+#' @examples
+#' NULL %||% 5
+#' 2 %||% 5
+#' @name or_or
+#' @aliases %||%
+#' @usage x \%||\% y
+#' @importFrom stats runif setNames
+#' @importFrom methods is
+#' @importFrom utils object.size
+#' @noRd
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
 }
@@ -18,28 +29,32 @@
 #' @return Result of expression
 #' @importFrom utils memory.size
 #' @keywords internal
+#' @noRd
 with_memory_check <- function(expr, threshold = 10000) {
   # Initial cleanup
   gc()
   initial_mem <- memory_usage()
-  
+
   # Evaluate expression
-  result <- tryCatch({
-    expr
-  }, error = function(e) {
-    gc()
-    stop("Operation failed: ", e$message)
-  })
-  
+  result <- tryCatch(
+    {
+      expr
+    },
+    error = function(e) {
+      gc()
+      stop("Operation failed: ", e$message)
+    }
+  )
+
   # Check memory usage
   final_mem <- memory_usage()
   mem_diff <- final_mem - initial_mem
-  
+
   if (mem_diff > threshold) {
     warning(sprintf("Large memory increase: %.2f MB", mem_diff))
     gc()
   }
-  
+
   result
 }
 
@@ -50,6 +65,7 @@ with_memory_check <- function(expr, threshold = 10000) {
 #' @return Progress manager object
 #' @importFrom progress progress_bar
 #' @keywords internal
+#' @noRd
 create_progress <- function(total, title = "Progress") {
   list(
     bar = progress::progress_bar$new(
@@ -70,17 +86,19 @@ create_progress <- function(total, title = "Progress") {
 #' @param progress Progress manager
 #' @param message Progress message
 #' @param show_memory Show memory usage
+#' @return Invisibly returns the updated progress object
 #' @keywords internal
+#' @noRd
 update_progress <- function(progress, message = "", show_memory = TRUE) {
   if (show_memory) {
     current_mem <- memory_usage()
     mem_diff <- current_mem - progress$memory_start
     message <- sprintf(
-      "%s | Memory: %.1f MB (Δ: %+.1f MB)",
+      "%s | Memory: %.1f MB (delta: %+.1f MB)",
       message, current_mem, mem_diff
     )
   }
-  
+
   progress$bar$tick(tokens = list(message = message))
 }
 
@@ -88,6 +106,7 @@ update_progress <- function(progress, message = "", show_memory = TRUE) {
 #'
 #' @return Memory usage in MB
 #' @keywords internal
+#' @noRd
 memory_usage <- function() {
   gc_stats <- gc(full = TRUE, verbose = FALSE)
   sum(gc_stats[, "used"]) * 8 / 1024^2
@@ -102,27 +121,28 @@ memory_usage <- function() {
 #' @return Results list
 #' @importFrom parallel mclapply detectCores
 #' @keywords internal
+#' @noRd
 parallel_process <- function(X, FUN, num_cores = 1, chunk_size = NULL) {
   if (num_cores <= 1) {
     return(lapply(X, FUN))
   }
-  
+
   # Set up parallel processing
   num_cores <- min(num_cores, parallel::detectCores())
-  
+
   # Create chunks
   if (is.null(chunk_size)) {
     chunk_size <- ceiling(length(X) / num_cores)
   }
   chunks <- split(X, ceiling(seq_along(X) / chunk_size))
-  
+
   # Process in parallel
   results <- parallel::mclapply(
     chunks,
     function(chunk) lapply(chunk, FUN),
     mc.cores = num_cores
   )
-  
+
   # Combine results
   unlist(results, recursive = FALSE)
 }
@@ -139,6 +159,7 @@ NULL
 #' @param with_timing Logical: include timestamps
 #' @return Function for reporting progress
 #' @keywords internal
+#' @noRd
 create_reporter <- function(verbose = TRUE, with_timing = TRUE) {
   # Create closure for consistent formatting
   time_format <- if (with_timing) {
@@ -146,12 +167,12 @@ create_reporter <- function(verbose = TRUE, with_timing = TRUE) {
   } else {
     function() ""
   }
-  
+
   # Return reporter function
   function(message, detail = NULL) {
     if (verbose) {
-      cat(sprintf("%s%s\n", time_format(), message))
-      if (!is.null(detail)) cat(sprintf("  %s\n", detail))
+      message(sprintf("%s%s\n", time_format(), message))
+      if (!is.null(detail)) message(sprintf("  %s\n", detail))
     }
   }
 }
@@ -167,6 +188,7 @@ create_reporter <- function(verbose = TRUE, with_timing = TRUE) {
 #' @param params List of additional parameters
 #' @return TRUE if valid, stops with error otherwise
 #' @keywords internal
+#' @noRd
 validate_inputs <- function(ref_matrix, ref_celltype, data_matrix, params) {
   # Check matrix classes
   if (!inherits(ref_matrix, c("matrix", "dgCMatrix"))) {
@@ -175,7 +197,7 @@ validate_inputs <- function(ref_matrix, ref_celltype, data_matrix, params) {
   if (!inherits(data_matrix, c("matrix", "dgCMatrix"))) {
     stop("data_matrix must be a matrix or dgCMatrix", call. = FALSE)
   }
-  
+
   # Check dimensions
   if (length(ref_celltype) != ncol(ref_matrix)) {
     stop(sprintf(
@@ -183,12 +205,12 @@ validate_inputs <- function(ref_matrix, ref_celltype, data_matrix, params) {
       length(ref_celltype), ncol(ref_matrix)
     ), call. = FALSE)
   }
-  
+
   # Check parameter values
   if (!params$scale_by %in% c("cells", "genes")) {
     stop('scale_by must be either "cells" or "genes"', call. = FALSE)
   }
-  
+
   # Check cores
   if (params$num_cores > 0) {
     max_cores <- parallel::detectCores()
@@ -200,7 +222,7 @@ validate_inputs <- function(ref_matrix, ref_celltype, data_matrix, params) {
       params$num_cores <- max_cores
     }
   }
-  
+
   TRUE
 }
 
@@ -213,20 +235,24 @@ validate_inputs <- function(ref_matrix, ref_celltype, data_matrix, params) {
 #' @param verbose Logical: show warnings
 #' @return Sparse matrix
 #' @keywords internal
+#' @noRd
 to_sparse <- function(matrix, verbose = FALSE) {
-  tryCatch({
-    if (inherits(matrix, "Matrix")) {
-      as(matrix, "CsparseMatrix")
-    } else {
+  tryCatch(
+    {
+      if (inherits(matrix, "Matrix")) {
+        as(matrix, "CsparseMatrix")
+      } else {
+        as(as.matrix(matrix), "CsparseMatrix")
+      }
+    },
+    error = function(e) {
+      if (verbose) {
+        warning("Matrix conversion failed: ", e$message)
+      }
+      # Try alternative conversion
       as(as.matrix(matrix), "CsparseMatrix")
     }
-  }, error = function(e) {
-    if (verbose) {
-      warning("Matrix conversion failed: ", e$message)
-    }
-    # Try alternative conversion
-    as(as.matrix(matrix), "CsparseMatrix")
-  })
+  )
 }
 
 #' Memory Usage Reporter
@@ -237,18 +263,19 @@ to_sparse <- function(matrix, verbose = FALSE) {
 #' @param threshold Memory threshold in MB to trigger warning
 #' @return Named vector of memory statistics
 #' @keywords internal
+#' @noRd
 check_memory <- function(threshold = 10000) {
   # Force garbage collection
   gc_stats <- gc(full = TRUE)
-  
+
   # Calculate memory usage
-  mem_used <- sum(gc_stats[, "used"]) * 8 / 1024^2  # Convert to MB
-  
+  mem_used <- sum(gc_stats[, "used"]) * 8 / 1024^2 # Convert to MB
+
   # Warning if above threshold
   if (mem_used > threshold) {
     warning(sprintf("High memory usage: %.2f MB", mem_used))
   }
-  
+
   # Return memory stats
   c(
     used = mem_used,
@@ -265,15 +292,16 @@ check_memory <- function(threshold = 10000) {
 #' @param max_size Maximum cache size in MB
 #' @return Cache environment
 #' @keywords internal
+#' @noRd
 create_cache <- function(max_size = 1000) {
   cache <- new.env(parent = emptyenv())
-  
+
   # Add metadata
   cache$size <- 0
   cache$max_size <- max_size
   cache$hits <- 0
   cache$misses <- 0
-  
+
   # Add methods
   cache$set <- function(key, value) {
     if (cache$size >= cache$max_size) {
@@ -283,7 +311,7 @@ create_cache <- function(max_size = 1000) {
     assign(paste0("data_", key), value, envir = cache)
     cache$size <- cache$size + object.size(value) / 1024^2
   }
-  
+
   cache$get <- function(key) {
     key <- paste0("data_", key)
     if (exists(key, envir = cache)) {
@@ -294,6 +322,6 @@ create_cache <- function(max_size = 1000) {
       NULL
     }
   }
-  
+
   cache
 }

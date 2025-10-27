@@ -1,7 +1,8 @@
 #' Create CSFNMF Object for Cell Type Analysis
 #'
 #' @description
-#' Creates and initializes a Constrained Supervised Factorization NMF (CSFNMF) object
+#' Creates and initializes a Constrained Supervised Factorization NMF 
+#' (CSFNMF) object
 #' for analyzing single-cell RNA sequencing data. This is the main function for
 #' starting analysis with CellMentor.
 #'
@@ -11,10 +12,12 @@
 #' @param norm Logical: perform normalization (default: TRUE)
 #' @param most.variable Logical: select variable genes (default: TRUE)
 #' @param scale Logical: perform scaling (default: TRUE)
-#' @param scale_by Character: scaling method, either "cells" or "genes" (default: "cells")
+#' @param scale_by Character: scaling method, either "cells" or "genes" 
+#' (default: "cells")
 #' @param gene_list Optional vector of genes to include (default: NULL)
 #' @param verbose Logical: show progress messages (default: TRUE)
-#' @param num_cores Integer: number of cores for parallel processing (default: 1)
+#' @param num_cores Integer: number of cores for parallel processing 
+#' (default: 1)
 #'
 #' @return A CSFNMF object containing processed data and annotations
 #' 
@@ -24,21 +27,11 @@
 #' @importFrom Seurat LogNormalize
 #' 
 #' @examples
-#' # Create CSFNMF object with default parameters
-#' object <- CreateCSFNMFobject(
-#'   ref_matrix = reference_data,
-#'   ref_celltype = cell_types,
-#'   data_matrix = query_data
-#' )
-#' 
-#' # Create object with custom parameters
-#' object <- CreateCSFNMFobject(
-#'   ref_matrix = reference_data,
-#'   ref_celltype = cell_types,
-#'   data_matrix = query_data,
-#'   scale_by = "genes",
-#'   num_cores = 4
-#' )
+#' data(ref_matrix_toy, qry_matrix_toy, ref_celltype_toy, package = "CellMentor")
+#' obj <- CreateCSFNMFobject(ref_matrix_toy, ref_celltype_toy, qry_matrix_toy,
+#'                           norm = FALSE, most.variable = FALSE, scale = FALSE,
+#'                           verbose = FALSE, num_cores = 1)
+#' inherits(obj, "csfnmf")
 #' @export
 CreateCSFNMFobject <- function(ref_matrix,
                                ref_celltype,
@@ -157,7 +150,8 @@ CreateCSFNMFobject <- function(ref_matrix,
     
     # Encode cell types and reorder
     report("Encoding cell types")
-    object@annotation$celltype.code <- encode_celltypes(object@annotation$celltype)
+    object@annotation$celltype.code <- 
+      encode_celltypes(object@annotation$celltype)
     
     report("Reordering data")
     object <- reorder_data(object, "celltype")
@@ -196,6 +190,7 @@ CreateCSFNMFobject <- function(ref_matrix,
 #' @param object CSFNMF object to validate
 #' @return Logical indicating if object is valid
 #' @keywords internal
+#' @noRd
 validate_final_object <- function(object) {
   # Check matrix dimensions
   if (ncol(object@matrices@ref) != nrow(object@annotation)) {

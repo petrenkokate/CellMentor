@@ -9,7 +9,8 @@ project_data(W, X, seed = 1, num_cores = 1, chunk_size = 1000, verbose = TRUE)
 \arguments{
 \item{W}{Basis matrix (genes × rank) containing learned gene weights}
 
-\item{X}{Data matrix (genes × cells) to be projected. Must have same number of genes (rows) as W}
+\item{X}{Data matrix (genes × cells) to be projected. Must have same number
+of genes (rows) as W}
 
 \item{seed}{Random seed for reproducibility (default: 1)}
 
@@ -22,7 +23,8 @@ Smaller chunks use less memory but may be slower}
 \item{verbose}{Logical; whether to show progress bar (default: TRUE)}
 }
 \value{
-A Matrix object (rank × cells) containing the projection coefficients.
+A Matrix object (rank × cells) containing the projection
+coefficients.
 The rows correspond to factors (rank) and columns to cells.
 Additional processing information is stored in attributes:
 - num_chunks: Number of chunks processed
@@ -30,35 +32,52 @@ Additional processing information is stored in attributes:
 - num_cores: Number of cores used
 }
 \description{
-Projects new data onto the learned basis matrix (W) using non-negative least squares (NNLS).
-This function is used to obtain cell-type signatures (H matrix) for new query data
-using the gene weights (W matrix) learned during training. The projection is performed
+Projects new data onto the learned basis matrix (W) using non-negative
+least squares (NNLS).
+This function is used to obtain cell-type signatures (H matrix) for
+new query data
+using the gene weights (W matrix) learned during training. The projection
+is performed
 in chunks to manage memory efficiently, with optional parallel processing.
 }
 \details{
 The projection is performed using non-negative least squares (NNLS) to solve
 the optimization problem: min ||X - WH||² subject to H >= 0, for each cell
-in the input matrix X. The resulting H matrix contains the cell-type signatures
-for the query data.
+in the input matrix X. The resulting H matrix contains the cell-type
+signatures for the query data.
 
-For memory efficiency, cells are processed in chunks. The chunk_size parameter
-can be adjusted based on available memory. Parallel processing can be enabled
-by setting num_cores > 1.
+For memory efficiency, cells are processed in chunks. The chunk_size
+parameter can be adjusted based on available memory. Parallel processing can
+be enabled by setting num_cores > 1.
 }
 \examples{
-# Project query data using trained model
-query_H <- project_data(
-  W = object@W,                    # Learned gene weights
-  X = object@matrices@data,        # Query data matrix
-  num_cores = 4,                   # Use 4 cores
-  chunk_size = 500                 # Process 500 cells at a time
-)
+# Minimal, fast example (no external data)
+set.seed(1)
 
-# Project with progress bar disabled
-query_H <- project_data(
-  W = object@W,
-  X = object@matrices@data,
+# Dimensions
+genes <- paste0("Gene", seq_len(50))
+k     <- 3    # rank
+cells <- 10
+
+# Non-negative basis W (genes x k)
+W_ex <- matrix(abs(rnorm(length(genes) * k, sd = 0.5)),
+               nrow = length(genes), ncol = k,
+               dimnames = list(genes, paste0("k", seq_len(k))))
+
+# Generate a non-negative H_true and synthetic data X = W * H + noise
+H_true <- matrix(abs(rnorm(k * cells, sd = 0.5)), nrow = k, ncol = cells)
+X_ex   <- W_ex \%*\% H_true + matrix(rexp(length(genes) * cells, rate = 20),
+                                   nrow = length(genes), ncol = cells,
+                                   dimnames = list(genes, paste0("cell", seq_len(cells))))
+
+# Project (rank x cells)
+H_est <- project_data(
+  W = W_ex,
+  X = X_ex,
+  num_cores = 1,     # keep examples fast & deterministic
+  chunk_size = 5,
   verbose = FALSE
 )
 
+dim(H_est)           # should be k x cells
 }

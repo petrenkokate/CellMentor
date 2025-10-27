@@ -14,3 +14,16 @@ A list containing:
 \description{
 Loads and processes the Baron et al. human pancreas single-cell RNA-seq dataset
 }
+\examples{
+
+# Load Baron human pancreas dataset
+baron <- h.baron_dataset()
+
+# Check dimensions
+dim(baron$data)
+
+# View cell type distribution
+table(baron$celltypes)
+
+
+}
