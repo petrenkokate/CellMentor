@@ -106,23 +106,3 @@ muraro_dataset <- function() {
     celltypes = sceM.celltype
   )
 }
-
-#' Tiny toy CSFNMF object for examples
-#'
-#' @description A small object for fast runnable examples and tests.
-#'
-#' @format A \code{csfnmf} object with:
-#' \describe{
-#'   \item{\code{matrices@ref}}{dgCMatrix (genes x cells), 30 x 60}
-#'   \item{\code{matrices@data}}{dgCMatrix (genes x cells), 30 x 40}
-#'   \item{\code{annotation}}{data.frame with celltype}
-#' }
-#' @usage data(obj_toy)
-#' @keywords datasets
-#' @return toy data in proper format
-#' @examples
-#' data(obj_toy)
-#' stopifnot(inherits(obj_toy, "csfnmf"))
-#' @docType data
-#' @name obj_toy
-"obj_toy"

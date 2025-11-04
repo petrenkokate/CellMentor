@@ -51,3 +51,5 @@ inst/doc
 CellMentor_*.tar.gz
 CellMentor.Rcheck/
 .Rbuildignore
+/doc/
+/Meta/

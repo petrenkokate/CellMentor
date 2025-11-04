@@ -51,7 +51,8 @@ Suggests:
     withr,
     rmarkdown,
     knitr,
-    BiocStyle
+    BiocStyle,
+    scater
 VignetteBuilder: knitr
 biocViews: 
     Software,

@@ -78,8 +78,9 @@ set.seed(100)
 library(CellMentor)
 library(Matrix)
 library(ggplot2)
-library(Seurat)
 library(scRNAseq)
+library(SingleCellExperiment)
+library(scater) 
 ```
 
 ## 1. Load Example Data
@@ -194,29 +195,48 @@ h_project <- project_data(
 )
 ```
 
-## 5. Integration with Seurat
+## 5. Integration with SingleCellExperiment
 
-Integrate the CellMentor results with Seurat for visualization:
+Integrate the CellMentor results with SingleCellExperiment for visualization:
 
-```{r seurat_integration}
-# Create Seurat object
+```{r}
+# Ensure unique rownames for genes
 rownames(query_matrix) <- make.unique(rownames(query_matrix))
-seu_muraro <- CreateSeuratObject(counts = query_matrix)
-seu_muraro$celltype <- query_celltypes
 
-# Add CellMentor dimensionality reduction to Seurat object
-seu_muraro$CellMentor <- CreateDimReducObject(
-  embeddings = t(as.matrix(h_project)),
-  key = "CellMentor_",
-  assay = DefaultAssay(seu_muraro),
-  loadings = as.matrix(W(best_model))
+sce <- SingleCellExperiment(
+  assays = list(counts = query_matrix)
 )
 
-# Run UMAP on CellMentor dimensions
-seu_muraro <- RunUMAP(seu_muraro, reduction = "CellMentor", dims = 1:K_VALUE)
+# Store any per-cell annotations you have (e.g., CellMentor cell types)
+colData(sce)$celltype <- query_celltypes
 
-# Visualize
-DimPlot(seu_muraro, group.by = "celltype")
+# Cell embeddings (cells x K)
+H_cell <- t(as.matrix(h_project))      # ensure cells x K
+colnames(H_cell) <- paste0("CM", seq_len(ncol(H_cell)))
+reducedDim(sce, "CellMentor") <- H_cell
+
+# Gene loadings (genes x K) — align to SCE row order
+W_mat <- as.matrix(W(best_model))      # genes x K
+# Make sure rownames are set and alignable
+if (!is.null(rownames(W_mat))) {
+  # Match to SCE rows; missing become NA
+  W_mat <- W_mat[match(rownames(sce), rownames(W_mat)), , drop = FALSE]
+  # Add each factor as a rowData column for convenience
+  for (j in seq_len(ncol(W_mat))) {
+    rowData(sce)[[paste0("CM_loading_", j)]] <- W_mat[, j]
+  }
+}
+
+# UMAP using the precomputed CellMentor embedding
+sce <- runUMAP(
+  sce,
+  dimred = "CellMentor",
+  name   = "UMAP_CellMentor",
+  ncomponents = 2
+)
+
+# Quick plots
+plotReducedDim(sce, dimred = "UMAP_CellMentor", colour_by = "celltype")
 ```
 
 # Running CellMentor on Your Own Data
