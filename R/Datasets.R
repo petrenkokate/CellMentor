@@ -49,6 +49,16 @@ hBaronDataset <- function() {
   )
 }
 
+#' @title Load Baron Human Pancreas Dataset (Deprecated)
+#' @description This function has been renamed. Please use \code{hBaronDataset()} instead.
+#' @return A list containing the dataset
+#' @export
+#' @keywords internal
+h.baron_dataset <- function() {
+  .Deprecated("hBaronDataset")
+  hBaronDataset()
+}
+
 #' Load Muraro Pancreas Dataset
 #'
 #' Loads and processes the Muraro et al. pancreas single-cell RNA-seq dataset
