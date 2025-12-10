@@ -10,7 +10,7 @@
 #' @examples
 #' 
 #' # Load Baron human pancreas dataset
-#' baron <- h.baron_dataset()
+#' baron <- hBaronDataset()
 #'
 #' # Check dimensions
 #' dim(baron$data)
@@ -20,9 +20,9 @@
 #'
 #'
 #' @export
-h.baron_dataset <- function() {
+hBaronDataset <- function() {
   # Load raw data
-  baron.h <- scRNAseq::BaronPancreasData(which = "human")
+  baron_h <- scRNAseq::BaronPancreasData(which = "human")
 
   # Extract and process cell type annotations
   celltype_mappings <- c(
@@ -31,21 +31,21 @@ h.baron_dataset <- function() {
     "t_cell" = "T cell"
   )
 
-  baron.h.celltype <- baron.h[["label"]]
-  names(baron.h.celltype) <- baron.h@colData@rownames
+  baron_h_celltype <- baron_h[["label"]]
+  names(baron_h_celltype) <- baron_h@colData@rownames
 
   # Update cell type labels using vectorized operation
   for (old_type in names(celltype_mappings)) {
-    baron.h.celltype[baron.h.celltype == old_type] <- celltype_mappings[old_type]
+    baron_h_celltype[baron_h_celltype == old_type] <- celltype_mappings[old_type]
   }
 
   # Process expression data
-  baron.h.data <- as.matrix(SingleCellExperiment::counts(baron.h))
-  rownames(baron.h.data) <- gsub(".", "-", rownames(baron.h.data), fixed = TRUE)
+  baron_h_data <- as.matrix(SingleCellExperiment::counts(baron_h))
+  rownames(baron_h_data) <- gsub(".", "-", rownames(baron_h_data), fixed = TRUE)
 
   list(
-    data = baron.h.data,
-    celltypes = baron.h.celltype
+    data = baron_h_data,
+    celltypes = baron_h_celltype
   )
 }
 

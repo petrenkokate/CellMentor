@@ -76,7 +76,7 @@ library(scRNAseq)
 
 ```R
 # Loading reference dataset (Baron)
-baron <- h.baron_dataset()
+baron <- hBaronDataset()
 reference_matrix <- baron$data
 reference_celltypes <- baron$celltypes
 

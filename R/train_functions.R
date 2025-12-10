@@ -180,8 +180,8 @@ divide_reference_data <- function(object, seed = 1) {
 #'
 #' dim(H_est)           # should be k x cells
 #' @importFrom nnls nnls
-#' @importFrom parallel mclapply detectCores makeCluster stopCluster 
-#' @importFrom parallel clusterExport parLapply
+#' @importFrom BiocParallel bplapply SnowParam bpnworkers
+#' @importFrom parallel detectCores
 #' @importFrom progress progress_bar
 #'
 #' @export
@@ -229,20 +229,21 @@ project_data <- function(W, X, seed = 1, num_cores = 1,
   # Process chunks in parallel if requested
   if (num_cores > 1) {
     num_cores <- min(num_cores, parallel::detectCores(), length(cell_chunks))
-
-    # Create cluster with progress reporting
-    cl <- parallel::makeCluster(num_cores)
-    on.exit(parallel::stopCluster(cl))
-
-    # Export necessary data
-    parallel::clusterExport(cl, c("W", "X", "k"), environment())
-
+    
+    # Create BiocParallel backend
+    BPPARAM <- BiocParallel::SnowParam(workers = num_cores)
+    
     # Process chunks in parallel
-    results <- parallel::parLapply(cl, cell_chunks, function(chunk) {
-      chunk_result <- process_chunk(chunk)
-      if (verbose) pb$tick()
-      chunk_result
-    })
+    # Note: BiocParallel handles variable export automatically
+    results <- BiocParallel::bplapply(
+      cell_chunks, 
+      function(chunk) {
+        chunk_result <- process_chunk(chunk)
+        if (verbose) pb$tick()
+        chunk_result
+      },
+      BPPARAM = BPPARAM
+    )
   } else {
     # Process sequentially
     results <- lapply(cell_chunks, function(chunk) {

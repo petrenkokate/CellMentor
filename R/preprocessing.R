@@ -66,6 +66,8 @@ find_common_genes <- function(ref_matrix, data_matrix) {
 #' @param num_cores Number of cores for parallel processing
 #' @return List of updated matrices
 #' @keywords internal
+#' @importFrom BiocParallel bplapply SnowParam
+#' @importFrom parallel detectCores
 #' @noRd
 select_variable_genes <- function(object, gene_list = NULL, num_cores = 1) {
   # Get reference data and annotations
@@ -75,11 +77,14 @@ select_variable_genes <- function(object, gene_list = NULL, num_cores = 1) {
   # Run SingleR (parallel if multiple cores)
   var_genes_result <- if (num_cores > 1) {
     num_cores <- min(num_cores, parallel::detectCores())
-    cl <- parallel::makeCluster(num_cores)
-    on.exit(parallel::stopCluster(cl))
-    parallel::parLapply(cl, 1L, function(x) {
-      SingleR::trainSingleR(ref_matrix, annotations)
-    })[[1]]
+    BPPARAM <- BiocParallel::SnowParam(workers = num_cores)
+    BiocParallel::bplapply(
+      1L, 
+      function(x) {
+        SingleR::trainSingleR(ref_matrix, annotations)
+      },
+      BPPARAM = BPPARAM
+    )[[1]]
   } else {
     SingleR::trainSingleR(ref_matrix, annotations)
   }

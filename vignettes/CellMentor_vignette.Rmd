@@ -89,7 +89,7 @@ We'll use the Baron pancreas dataset as our reference and the Muraro pancreas da
 
 ```{r load_data}
 # Loading reference dataset (Baron)
-baron <- h.baron_dataset()
+baron <- hBaronDataset()
 reference_matrix <- baron$data
 reference_celltypes <- baron$celltypes
 

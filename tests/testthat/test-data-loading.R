@@ -1,8 +1,8 @@
 # Tests for data loading functions - force execution for coverage
 
-test_that("h.baron_dataset exists and is callable", {
-  expect_true(exists("h.baron_dataset"))
-  expect_type(h.baron_dataset, "closure")
+test_that("hBaronDataset exists and is callable", {
+  expect_true(exists("hBaronDataset"))
+  expect_type(hBaronDataset, "closure")
 })
 
 test_that("muraro_dataset exists and is callable", {
@@ -10,9 +10,9 @@ test_that("muraro_dataset exists and is callable", {
   expect_type(muraro_dataset, "closure")
 })
 
-test_that("h.baron_dataset returns correct structure", {
+test_that("hBaronDataset returns correct structure", {
   # DON'T skip - run it for coverage
-  baron <- h.baron_dataset()
+  baron <- hBaronDataset()
   
   # Check structure
   expect_type(baron, "list")

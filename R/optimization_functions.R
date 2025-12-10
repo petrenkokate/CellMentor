@@ -83,7 +83,8 @@ update_w <- function(object) {
 #' @param object CSFNMF object
 #' @param num_cores Number of cores for parallel processing
 #' @return Updated H matrix
-#' @importFrom parallel mclapply
+#' @importFrom BiocParallel bplapply MulticoreParam
+#' @importFrom parallel detectCores
 #' @keywords internal
 #' @noRd
 update_h <- function(object, num_cores = 1) {
@@ -109,20 +110,27 @@ update_h <- function(object, num_cores = 1) {
       seq_len(ncol(object@H)),
       ceiling(seq_len(ncol(object@H)) / chunk_size)
     )
-
+    
+    # Create BiocParallel backend
+    BPPARAM <- BiocParallel::MulticoreParam(workers = num_cores)
+    
     # Process chunks in parallel with optimized operations
-    H_new <- do.call(cbind, parallel::mclapply(chunks, function(idx) {
-      # Efficient computation for each chunk
-      a <- WtW %*% object@H[, idx] + H_pos[, idx] + gamma_matrix[, idx]
-      b <- WtX[, idx]
-      c <- H_neg[, idx]
-
-      # Compute update using quadratic formula
-      up <- b + sqrt(b * b + 4 * a * c)
-      down <- 2 * a
-
-      object@H[, idx] * (up / (down + eps))
-    }, mc.cores = num_cores))
+    H_new <- do.call(cbind, BiocParallel::bplapply(
+      chunks, 
+      function(idx) {
+        # Efficient computation for each chunk
+        a <- WtW %*% object@H[, idx] + H_pos[, idx] + gamma_matrix[, idx]
+        b <- WtX[, idx]
+        c <- H_neg[, idx]
+        
+        # Compute update using quadratic formula
+        up <- b + sqrt(b * b + 4 * a * c)
+        down <- 2 * a
+        
+        object@H[, idx] * (up / (down + eps))
+      },
+      BPPARAM = BPPARAM
+    ))
   } else {
     # Single core processing with optimized operations
     a <- WtW %*% object@H + H_pos + gamma_matrix

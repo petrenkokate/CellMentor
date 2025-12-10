@@ -2,7 +2,8 @@
 #' @importFrom stats ks.test median rnorm
 #' @importFrom RMTstat qmp dmp
 #' @importFrom Matrix Matrix t crossprod tcrossprod Diagonal
-#' @importFrom parallel mclapply
+#' @importFrom BiocParallel bplapply MulticoreParam
+#' @importFrom parallel detectCores
 #' @importFrom ggplot2 ggplot aes geom_histogram ggplot_build
 #' @importFrom data.table as.data.table
 #' @importFrom magrittr %>%
@@ -40,10 +41,12 @@ SelectRank <- function(train_matrix,
   best_params <- list(k = 0, alpha = 0, beta = 0, scales = NULL)
 
   diff_list <- if (numCores > 1) {
-    parallel::mclapply(
+    num_cores <- min(length(beta_list), numCores, parallel::detectCores())
+    BPPARAM <- BiocParallel::MulticoreParam(workers = num_cores)
+    BiocParallel::bplapply(
       beta_list,
       function(x) OptimalBeta(train_matrix, x),
-      mc.cores = min(length(beta_list), numCores)
+      BPPARAM = BPPARAM
     )
   } else {
     lapply(beta_list, function(x) OptimalBeta(train_matrix, x))

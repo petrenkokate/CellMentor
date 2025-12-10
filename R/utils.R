@@ -119,7 +119,8 @@ memory_usage <- function() {
 #' @param num_cores Number of cores
 #' @param chunk_size Size of chunks
 #' @return Results list
-#' @importFrom parallel mclapply detectCores
+#' @importFrom BiocParallel bplapply MulticoreParam bpnworkers
+#' @importFrom parallel detectCores
 #' @keywords internal
 #' @noRd
 parallel_process <- function(X, FUN, num_cores = 1, chunk_size = NULL) {
@@ -129,18 +130,21 @@ parallel_process <- function(X, FUN, num_cores = 1, chunk_size = NULL) {
 
   # Set up parallel processing
   num_cores <- min(num_cores, parallel::detectCores())
-
+  
+  # Create BiocParallel backend
+  BPPARAM <- BiocParallel::MulticoreParam(workers = num_cores)
+  
   # Create chunks
   if (is.null(chunk_size)) {
     chunk_size <- ceiling(length(X) / num_cores)
   }
   chunks <- split(X, ceiling(seq_along(X) / chunk_size))
-
+  
   # Process in parallel
-  results <- parallel::mclapply(
+  results <- BiocParallel::bplapply(
     chunks,
     function(chunk) lapply(chunk, FUN),
-    mc.cores = num_cores
+    BPPARAM = BPPARAM
   )
 
   # Combine results

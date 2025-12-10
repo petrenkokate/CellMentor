@@ -1,7 +1,7 @@
 Package: CellMentor
 Type: Package
 Title: Supervised Non-negative Matrix Factorization for Dimensional Reduction in Single-Cell Analysis
-Version: 0.99.0
+Version: 0.99.2
 Authors@R: person("Ekaterina", "Petrenko", 
     email = "petrenko.kate@icloud.com", 
     role = c("aut", "cre"),
@@ -18,10 +18,11 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 Depends: 
-    R (>= 4.3.0)
+    R (>= 4.5.0)
 Imports:
     methods,
     Matrix,
+    BiocParallel,
     SingleR,
     Seurat (>= 4.0.0),
     utils,
@@ -57,7 +58,6 @@ VignetteBuilder: knitr
 biocViews: 
     Software,
     SingleCell,
-    GeneExpression,
     Transcriptomics,
     DimensionReduction
 URL: https://github.com/petrenkokate/CellMentor
