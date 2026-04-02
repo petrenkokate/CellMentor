@@ -5,22 +5,29 @@
 #' @return A list containing:
 #'   \item{data}{Expression matrix with genes as rows and cells as columns}
 #'   \item{celltypes}{Named vector of cell type annotations}
-#' @importFrom scRNAseq BaronPancreasData
 #' @importFrom SingleCellExperiment counts
 #' @examples
-#' 
-#' # Load Baron human pancreas dataset
-#' baron <- hBaronDataset()
 #'
-#' # Check dimensions
-#' dim(baron$data)
+#' if (requireNamespace("scRNAseq", quietly = TRUE)) {
+#'   # Load Baron human pancreas dataset
+#'   baron <- hBaronDataset()
 #'
-#' # View cell type distribution
-#' table(baron$celltypes)
+#'   # Check dimensions
+#'   dim(baron$data)
 #'
+#'   # View cell type distribution
+#'   table(baron$celltypes)
+#' }
 #'
 #' @export
 hBaronDataset <- function() {
+  if (!requireNamespace("scRNAseq", quietly = TRUE)) {
+    stop(
+      "Package 'scRNAseq' is required for this function. ",
+      "Install it with: BiocManager::install('scRNAseq')",
+      call. = FALSE
+    )
+  }
   # Load raw data
   baron_h <- scRNAseq::BaronPancreasData(which = "human")
 
@@ -66,24 +73,31 @@ h.baron_dataset <- function() {
 #' @return A list containing:
 #'   \item{data}{Expression matrix with genes as rows and cells as columns}
 #'   \item{celltypes}{Named vector of cell type annotations}
-#' @importFrom scRNAseq MuraroPancreasData
 #' @examples
 #'
-#' # Load Muraro pancreas dataset
-#' muraro <- muraro_dataset()
+#' if (requireNamespace("scRNAseq", quietly = TRUE)) {
+#'   # Load Muraro pancreas dataset
+#'   muraro <- muraro_dataset()
 #'
-#' # Check dataset dimensions
-#' dim(muraro$data)
+#'   # Check dataset dimensions
+#'   dim(muraro$data)
 #'
-#' # View available cell types
-#' table(muraro$celltypes)
+#'   # View available cell types
+#'   table(muraro$celltypes)
 #'
-#' # Check number of cells per type
-#' sort(table(muraro$celltypes), decreasing = TRUE)
-#' 
+#'   # Check number of cells per type
+#'   sort(table(muraro$celltypes), decreasing = TRUE)
+#' }
 #'
 #' @export
 muraro_dataset <- function() {
+  if (!requireNamespace("scRNAseq", quietly = TRUE)) {
+    stop(
+      "Package 'scRNAseq' is required for this function. ",
+      "Install it with: BiocManager::install('scRNAseq')",
+      call. = FALSE
+    )
+  }
   # Load and filter data
   sceM <- scRNAseq::MuraroPancreasData()
   sceM <- sceM[, !is.na(sceM$label) & sceM$label != "unclear"]

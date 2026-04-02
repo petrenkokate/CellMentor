@@ -1,7 +1,7 @@
 Package: CellMentor
 Type: Package
 Title: Supervised Non-negative Matrix Factorization for Dimensional Reduction in Single-Cell Analysis
-Version: 0.99.2
+Version: 0.99.3
 Authors@R: person("Ekaterina", "Petrenko", 
     email = "petrenko.kate@icloud.com", 
     role = c("aut", "cre"),
@@ -41,7 +41,6 @@ Imports:
     tibble,
     lsa,
     nnls,
-    scRNAseq,
     SingleCellExperiment,
     entropy,
     irlba,
@@ -53,7 +52,8 @@ Suggests:
     rmarkdown,
     knitr,
     BiocStyle,
-    scater
+    scater,
+    scRNAseq
 VignetteBuilder: knitr
 biocViews: 
     Software,

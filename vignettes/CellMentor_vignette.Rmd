@@ -78,7 +78,6 @@ set.seed(100)
 library(CellMentor)
 library(Matrix)
 library(ggplot2)
-library(scRNAseq)
 library(SingleCellExperiment)
 library(scater) 
 ```
