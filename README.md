@@ -144,26 +144,26 @@ csfnmf_obj <- CreateCSFNMFobject(
 )
 ```
 
-***Expected Output:***
+***Example Output (illustrative — exact counts depend on the current scRNAseq dataset snapshot):***
 ```
-[11:45:56] Starting CSFNMF object creation
-[11:45:59] Validating inputs
-[11:45:59] Creating CSFNMF object
-[11:45:59] Converting matrices to sparse format
-[11:46:00] Setting up annotations
-[11:46:00] Cleaning matrices
-[11:46:00] Removed 3319 empty rows from reference matrix
-[11:46:00] Removed 496 empty rows from query matrix
-[11:46:00] Finding common genes
-[11:46:00] Found 14904 common genes
-[11:46:00] Normalizing data
-[11:46:04] Selecting variable genes
-[11:46:05] Selected 999 variable genes
-[11:46:05] Scaling data by cells
-[11:46:06] Encoding cell types
-[11:46:06] Reordering data
-[11:46:06] Validating final object
-[11:46:06] CSFNMF object creation complete
+[hh:mm:ss] Starting CSFNMF object creation
+[hh:mm:ss] Validating inputs
+[hh:mm:ss] Creating CSFNMF object
+[hh:mm:ss] Converting matrices to sparse format
+[hh:mm:ss] Setting up annotations
+[hh:mm:ss] Cleaning matrices
+[hh:mm:ss] Removed ~5000 empty rows from reference matrix
+[hh:mm:ss] Removed ~2500 empty rows from query matrix
+[hh:mm:ss] Finding common genes
+[hh:mm:ss] Found ~13000 common genes
+[hh:mm:ss] Normalizing data
+[hh:mm:ss] Selecting variable genes
+[hh:mm:ss] Selected ~1500 variable genes
+[hh:mm:ss] Scaling data by cells
+[hh:mm:ss] Encoding cell types
+[hh:mm:ss] Reordering data
+[hh:mm:ss] Validating final object
+[hh:mm:ss] CSFNMF object creation complete
 ```
 
 ### 3. Run CellMentor and choose optimal params
@@ -195,23 +195,23 @@ best_model <- optimal_params$best_model
 K_VALUE <- best_model@parameters$rank
 ```
 
-***Expected Output:***
+***Example Output (illustrative — the selected rank depends on the current data snapshot; expect a value in the tens):***
 
 ```
-[11:46:11] Creating training object
-[11:46:11] Determining optimal rank
-[11:47:02] Optimal rank determined: 80
-[11:47:02] Starting parameter grid search
-[11:47:02] Testing configuration 1/4
-[11:49:09] Testing configuration 2/4
-[11:51:20] Testing configuration 3/4
-[11:53:25] Testing configuration 4/4
-[11:55:40] Training final model with best parameters on full dataset
-[11:55:40] Initializing W and H matrices
-[11:55:40] Calculating helper matrices
-[11:55:40] Calculating alpha
-[11:55:40] Calculating H constants
-[11:55:47] Updating W and H matrices
+[hh:mm:ss] Creating training object
+[hh:mm:ss] Determining optimal rank
+[hh:mm:ss] Optimal rank determined: <auto>
+[hh:mm:ss] Starting parameter grid search
+[hh:mm:ss] Testing configuration 1/4
+[hh:mm:ss] Testing configuration 2/4
+[hh:mm:ss] Testing configuration 3/4
+[hh:mm:ss] Testing configuration 4/4
+[hh:mm:ss] Training final model with best parameters on full dataset
+[hh:mm:ss] Initializing W and H matrices
+[hh:mm:ss] Calculating helper matrices
+[hh:mm:ss] Calculating alpha
+[hh:mm:ss] Calculating H constants
+[hh:mm:ss] Updating W and H matrices
 ```
 
 Check best params
@@ -219,17 +219,17 @@ Check best params
 ```R
 print(optimal_params$best_params)
 ```
-***Expected Output:***
+***Example Output (illustrative — exact `$k` and `$alpha` depend on the data snapshot):***
 
 ```
 $k
-[1] 80
+[1] <auto>
 
 $init_method
 [1] "regulated"
 
 $alpha
-[1] 5
+[1] 1   # or 5; whichever scored higher NMI on the held-out split
 
 $beta
 [1] 5
@@ -321,10 +321,8 @@ The repository contains:
 
 If you use *CellMentor* in your work, please cite:
 
-CellMentor: Cell-Type Aware Dimensionality Reduction for Single-cell RNA-Sequencing Data  
-Or Hevdeli†, Ekaterina Petrenko†, Dvir Aran  
-*bioRxiv* 2025.06.17.660094  
-doi: [https://doi.org/10.1101/2025.06.17.660094](https://doi.org/10.1101/2025.06.17.660094)  
+Hevdeli O†, Petrenko E†, Aran D. CellMentor: cell-type aware dimensionality reduction for single-cell RNA-sequencing data. *Nat Commun* **17**, 396 (2026).  
+doi: [https://doi.org/10.1038/s41467-025-67088-7](https://doi.org/10.1038/s41467-025-67088-7)
 
 † These authors contributed equally to this work.
 

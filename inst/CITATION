@@ -1,0 +1,24 @@
+citHeader("To cite CellMentor in publications, please use:")
+
+bibentry(
+  bibtype  = "Article",
+  title    = "CellMentor: cell-type aware dimensionality reduction for single-cell RNA-sequencing data",
+  author   = c(
+    person(given = "Or",        family = "Hevdeli"),
+    person(given = "Ekaterina", family = "Petrenko"),
+    person(given = "Dvir",      family = "Aran")
+  ),
+  journal  = "Nature Communications",
+  year     = "2026",
+  volume   = "17",
+  number   = "396",
+  doi      = "10.1038/s41467-025-67088-7",
+  url      = "https://doi.org/10.1038/s41467-025-67088-7",
+  textVersion = paste(
+    "Hevdeli O, Petrenko E, Aran D (2026).",
+    "CellMentor: cell-type aware dimensionality reduction for single-cell RNA-sequencing data.",
+    "Nature Communications 17, 396.",
+    "doi:10.1038/s41467-025-67088-7"
+  ),
+  footer = "Or Hevdeli and Ekaterina Petrenko contributed equally to this work."
+)

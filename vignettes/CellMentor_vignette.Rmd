@@ -99,7 +99,9 @@ query_celltypes <- muraro$celltypes # This would be unknown in a real applicatio
 # We keep it here for evaluation
 ```
 
-# (Optional) Create smaller subsets for faster demonstration
+## (Demo only) Create balanced subsets for a fast vignette build
+
+> **Note.** The vignette runs on a small, balanced subset of Baron/Muraro (30 cells per cell type) so it builds quickly on the Bioconductor build farm. **Every downstream result in this vignette — the optimal rank, NMI, projection, and UMAP — is therefore computed on the subset, not on the full datasets.** For a realistic analysis on your own data, drop or relax this subsetting step; results, the auto-selected rank, and the UMAP topology will differ accordingly.
 
 ```{r}
 # Function to create balanced subsets
@@ -196,7 +198,7 @@ h_project <- project_data(
 
 ## 5. Integration with SingleCellExperiment
 
-Integrate the CellMentor results with SingleCellExperiment for visualization:
+Integrate the CellMentor results with `SingleCellExperiment` for visualization. The UMAP below is computed from the CellMentor embedding **of the subsetted query cells (30 per cell type)** — not from the full Muraro dataset. With the full data, the same code produces a denser embedding and a more structured UMAP.
 
 ```{r}
 # Ensure unique rownames for genes
@@ -295,9 +297,7 @@ sessionInfo()
 
 # References
 
-CellMentor: Cell-Type Aware Dimensionality Reduction for Single-cell RNA-Sequencing Data  
-Or Hevdeli†, Ekaterina Petrenko†, Dvir Aran  
-*bioRxiv* 2025.06.17.660094  
-doi: [https://doi.org/10.1101/2025.06.17.660094](https://doi.org/10.1101/2025.06.17.660094)  
+Hevdeli O†, Petrenko E†, Aran D. CellMentor: cell-type aware dimensionality reduction for single-cell RNA-sequencing data. *Nat Commun* **17**, 396 (2026).
+doi: [https://doi.org/10.1038/s41467-025-67088-7](https://doi.org/10.1038/s41467-025-67088-7)
 
 † These authors contributed equally to this work.

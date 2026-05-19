@@ -25,9 +25,14 @@ initialize_wh <- function(object, method = "NNDSVD", seed = 1) {
   # Validate k
   max_possible_k <- min(nrow(data_matrix), ncol(data_matrix))
   if (k > max_possible_k) {
-    warning(sprintf("Reducing k from %d to %d due to matrix dimensions", 
+    warning(sprintf("Reducing k from %d to %d due to matrix dimensions",
                     k, max_possible_k))
     k <- max_possible_k
+  }
+
+  if (length(method) != 1L || is.na(method) || !is.character(method)) {
+    stop("`method` must be a single non-NA character string; got ",
+         deparse(method))
   }
 
   switch(method,

@@ -53,3 +53,7 @@ CellMentor.Rcheck/
 .Rbuildignore
 /doc/
 /Meta/
+
+# Local vignette previews (rendered for review, not for shipping)
+CellMentor_vignette_preview.html
+*_preview.html

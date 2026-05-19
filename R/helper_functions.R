@@ -363,21 +363,37 @@ calculate_nmi <- function(true_labels, pred_labels) {
 #' @importFrom Seurat FindNeighbors FindClusters Idents
 #' @keywords internal
 #' @noRd
-cluster_nmf <- function(h_matrix, 
-                        n_clusters, 
-                        method = "kmeans", 
+cluster_nmf <- function(h_matrix,
+                        n_clusters,
+                        method = "kmeans",
                         resolution = 0.8) {
   # Transpose to have cells as rows
   data <- t(as.matrix(h_matrix))
+  n_cells <- nrow(data)
+  n_features <- ncol(data)
+
+  if (n_cells <= 1L) {
+    return(rep(1L, n_cells))
+  }
+
+  # kmeans requires centers < nrow(x); other methods also need centers >= 1.
+  effective_k <- max(1L, min(as.integer(n_clusters), n_cells - 1L))
+
+  # SNN (Seurat) needs enough features for variable-feature selection and
+  # neighbor-graph construction; on low-dim NMF embeddings it fails. Fall
+  # back to kmeans, which is appropriate for h_project evaluation.
+  if (method == "snn" && (n_features < 10L || n_cells < 10L)) {
+    method <- "kmeans"
+  }
 
   clusters <- switch(method,
     "kmeans" = {
-      km <- kmeans(data, centers = n_clusters)
+      km <- kmeans(data, centers = effective_k)
       km$cluster
     },
     "hclust" = {
       hc <- hclust(dist(data))
-      cutree(hc, k = n_clusters)
+      cutree(hc, k = effective_k)
     },
     "snn" = {
       # Create Seurat object
@@ -387,17 +403,17 @@ cluster_nmf <- function(h_matrix,
       )
 
       seur_obj[["RNA"]] <- assay_v3
-      seur_obj <- Seurat::FindVariableFeatures(seur_obj, 
-                                               selection.method = "vst", 
-                                               nfeatures = 2000, 
+      seur_obj <- Seurat::FindVariableFeatures(seur_obj,
+                                               selection.method = "vst",
+                                               nfeatures = 2000,
                                                verbose = FALSE)
-      seur_obj <- Seurat::FindNeighbors(seur_obj, 
-                                        dims = NULL, 
-                                        annoy.metric = "cosine", 
+      seur_obj <- Seurat::FindNeighbors(seur_obj,
+                                        dims = NULL,
+                                        annoy.metric = "cosine",
                                         verbose = FALSE)
-      seur_obj <- Seurat::FindClusters(seur_obj, 
-                                       resolution = resolution, 
-                                       algorithm = 1, 
+      seur_obj <- Seurat::FindClusters(seur_obj,
+                                       resolution = resolution,
+                                       algorithm = 1,
                                        verbose = FALSE)
       as.numeric(Idents(seur_obj))
     },

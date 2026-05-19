@@ -199,7 +199,8 @@ CellMentor <- function(object,
         convergence_iter = length(model@results$loss)
       )
     }, error = function(e) {
-      warning("Error with parameters: ", paste(params, collapse = ", "))
+      warning("Error with parameters: ", paste(params, collapse = ", "),
+              "\n  cause: ", conditionMessage(e))
       c(nmi = NA, loss = NA, convergence_iter = NA)
     })
   }
@@ -234,6 +235,10 @@ CellMentor <- function(object,
   }
   
   # Find best parameters
+  if (all(is.na(results$nmi))) {
+    stop("All parameter configurations failed; cannot select best_params. ",
+         "Check the warnings above for the underlying cause.")
+  }
   best_idx <- which.max(results$nmi)
   best_params <- param_grid[best_idx, ]
   
