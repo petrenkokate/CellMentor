@@ -1,3 +1,17 @@
+# CellMentor 1.1.2 (2026-05-22)
+
+## Bug fixes
+
+* `calculate_performance()` now passes `as.factor(true_labels)` and
+  `as.factor(clusters)` to `aricode::NMI()`. As of `aricode` 1.1.0
+  (currently shipping in Bioconductor 3.24), `NMI()` routes mixed-type
+  inputs through `sort_pairs()`, which calls `as.integer()` on character
+  labels — turning cell-type names such as `"alpha"` into `NA` and aborting
+  with `"NA are not supported."`. Coercing both sides to factor keeps the
+  computation well-defined and restores compatibility with the Bioconductor
+  build farm. This was the underlying cause of the vignette failure that
+  1.1.1 surfaced but did not fix.
+
 # CellMentor 1.1.1 (2026-05-19)
 
 ## Bug fixes

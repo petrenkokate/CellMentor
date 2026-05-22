@@ -57,3 +57,11 @@ CellMentor.Rcheck/
 # Local vignette previews (rendered for review, not for shipping)
 CellMentor_vignette_preview.html
 *_preview.html
+
+# Local planning / AI-assistant scratch (not part of the package)
+task_plan.md
+findings.md
+progress.md
+.claude/
+.claude*
+CLAUDE.md
