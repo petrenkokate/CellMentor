@@ -433,8 +433,11 @@ calculate_performance <- function(train_object, h_project,
   # Get true labels
   true_labels <- train_object@test_annotation[cell_names, "celltype"]
 
-  # Calculate NMI
-  nmi_score <- aricode::NMI(true_labels, clusters)
+  # Calculate NMI. aricode >= 1.1.0 routes mixed-type inputs through
+  # sort_pairs(), which calls as.integer() on character labels and silently
+  # produces NAs (e.g. as.integer("alpha") == NA); NMI then errors with
+  # "NA are not supported." Coercing both sides to factor keeps NMI happy.
+  nmi_score <- aricode::NMI(as.factor(true_labels), as.factor(clusters))
 
   if (return_pred) {
     list(
